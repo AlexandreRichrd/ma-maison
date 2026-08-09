@@ -112,9 +112,9 @@ async function main() {
   today6pm.setHours(18, 0, 0, 0);
 
   await db.insert(reminders).values([
-    { title: "Sortir les poubelles demain", dueAt: tomorrow7am, doneAt: null },
-    { title: "Racheter de l'essuie-tout", dueAt: today2pm, doneAt: null },
-    { title: "Arroser les plantes", dueAt: today6pm, doneAt: new Date() },
+    { title: "Sortir les poubelles demain", dueAt: tomorrow7am, doneAt: null, memberId: sam.id },
+    { title: "Racheter de l'essuie-tout", dueAt: today2pm, doneAt: null, memberId: mia.id },
+    { title: "Arroser les plantes", dueAt: today6pm, doneAt: new Date(), memberId: mia.id },
   ]);
 
   console.log("Seeded:", { household: household.id, members: [mia.name, sam.name] });

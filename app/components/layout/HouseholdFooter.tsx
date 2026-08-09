@@ -1,8 +1,7 @@
 import { Form } from "react-router";
 
 import type { Member } from "~/db/schema";
-
-import { AVATAR_COLORS } from "./nav-items";
+import { AVATAR_COLORS } from "~/lib/member-colors";
 
 export function HouseholdFooter({ members }: { members: Member[] }) {
   return (

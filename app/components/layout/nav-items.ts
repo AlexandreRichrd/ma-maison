@@ -22,8 +22,6 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/household", label: "Foyer", shapeClassName: "rounded-[9px]" },
 ];
 
-export const AVATAR_COLORS = ["bg-avatar-1", "bg-avatar-2"];
-
 /** Longest-prefix match against the current pathname, for the mobile header title. */
 export function sectionTitleForPath(pathname: string): string {
   const match = [...NAV_ITEMS]

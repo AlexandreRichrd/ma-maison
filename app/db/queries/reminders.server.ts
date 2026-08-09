@@ -20,10 +20,12 @@ export async function getDueTodayReminders(): Promise<Reminder[]> {
 export async function createReminder(params: {
   title: string;
   dueAt: Date;
+  memberId: string;
 }): Promise<void> {
   await db.insert(reminders).values({
     title: params.title,
     dueAt: params.dueAt,
+    memberId: params.memberId,
     doneAt: null,
   });
 }

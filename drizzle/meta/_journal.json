@@ -8,6 +8,13 @@
       "when": 1786287074171,
       "tag": "0000_rainy_revanche",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1786293878584,
+      "tag": "0001_daffy_wendigo",
+      "breakpoints": true
     }
   ]
 }

@@ -115,6 +115,9 @@ export const reminders = pgTable("reminders", {
   title: text("title").notNull(),
   dueAt: timestamp("due_at", { withTimezone: true }).notNull(),
   doneAt: timestamp("done_at", { withTimezone: true }),
+  memberId: uuid("member_id").references(() => members.id, {
+    onDelete: "set null",
+  }),
   ...timestamps,
 });
 
@@ -128,6 +131,7 @@ export const membersRelations = relations(members, ({ one, many }) => ({
     references: [households.id],
   }),
   choreCompletions: many(choreCompletions),
+  reminders: many(reminders),
 }));
 
 export const shoppingListsRelations = relations(shoppingLists, ({ many }) => ({
@@ -176,6 +180,13 @@ export const choreCompletionsRelations = relations(
     }),
   }),
 );
+
+export const remindersRelations = relations(reminders, ({ one }) => ({
+  member: one(members, {
+    fields: [reminders.memberId],
+    references: [members.id],
+  }),
+}));
 
 export type Household = typeof households.$inferSelect;
 export type Member = typeof members.$inferSelect;

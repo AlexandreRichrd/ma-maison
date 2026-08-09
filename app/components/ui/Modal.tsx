@@ -30,7 +30,33 @@ export function Modal<TData>({
 }: ModalProps<TData>) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const lastFocusedRef = useRef<HTMLElement | null>(null);
+  const submittedWhileOpenRef = useRef(false);
   const pending = fetcher.state !== "idle";
+
+  // Close automatically once a submission we made while open succeeds — but
+  // only one we actually observed going through, not stale data left over
+  // from a previous open (which would otherwise close the modal the instant
+  // it reopens).
+  useEffect(() => {
+    if (!open) {
+      submittedWhileOpenRef.current = false;
+      return;
+    }
+    if (fetcher.state !== "idle") {
+      submittedWhileOpenRef.current = true;
+      return;
+    }
+    if (!submittedWhileOpenRef.current || fetcher.data === undefined) return;
+    const succeeded = !(
+      typeof fetcher.data === "object" &&
+      fetcher.data !== null &&
+      "errors" in fetcher.data
+    );
+    if (succeeded) {
+      submittedWhileOpenRef.current = false;
+      onClose();
+    }
+  }, [open, fetcher.state, fetcher.data, onClose]);
 
   useEffect(() => {
     if (!open) return;

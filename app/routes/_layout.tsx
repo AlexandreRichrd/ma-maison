@@ -6,6 +6,7 @@ import { MobileNavDrawer } from "~/components/layout/MobileNavDrawer";
 import { Sidebar } from "~/components/layout/Sidebar";
 import { getOrderedMembers } from "~/db/queries/household.server";
 import { getCurrentMemberId, requireSession } from "~/lib/auth.server";
+import { avatarColorFor } from "~/lib/member-colors";
 
 import type { Route } from "./+types/_layout";
 
@@ -26,7 +27,11 @@ export default function AppLayout({ loaderData }: Route.ComponentProps) {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <MobileHeader currentMember={currentMember} onOpenNav={() => setNavOpen(true)} />
+      <MobileHeader
+        currentMember={currentMember}
+        avatarColorClassName={avatarColorFor(members, currentMember?.id)}
+        onOpenNav={() => setNavOpen(true)}
+      />
       <MobileNavDrawer open={navOpen} onClose={() => setNavOpen(false)} members={members} />
 
       <div className="flex min-h-0 flex-1">

@@ -2,8 +2,7 @@ import { Link } from "react-router";
 
 import { Card } from "~/components/ui";
 import type { MemberWeekChores } from "~/db/queries/cleaning.server";
-
-const AVATAR_COLORS = ["bg-avatar-1", "bg-avatar-2"];
+import { AVATAR_COLORS } from "~/lib/member-colors";
 
 export function CleaningWidget({ weekChores }: { weekChores: MemberWeekChores[] }) {
   return (

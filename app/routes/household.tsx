@@ -1,10 +1,9 @@
 import { PageHeader } from "~/components/layout/PageHeader";
 import { Button, Card } from "~/components/ui";
 import { getOrderedMembers } from "~/db/queries/household.server";
+import { AVATAR_COLORS } from "~/lib/member-colors";
 
 import type { Route } from "./+types/household";
-
-const AVATAR_COLORS = ["bg-avatar-1", "bg-avatar-2"];
 
 export function meta() {
   return [{ title: "Foyer · Hearth" }];

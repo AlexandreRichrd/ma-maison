@@ -3,8 +3,10 @@ import { data, useFetcher } from "react-router";
 
 import { PageHeader } from "~/components/layout/PageHeader";
 import { ReminderRow } from "~/components/reminders/ReminderRow";
-import { Button, Input, Modal } from "~/components/ui";
+import { Button, Input, Modal, Select } from "~/components/ui";
 import { createReminder, getReminders, toggleReminder } from "~/db/queries/reminders.server";
+import { getOrderedMembers } from "~/db/queries/household.server";
+import { getCurrentMemberId } from "~/lib/auth.server";
 import { addReminderSchema, toggleReminderSchema } from "~/lib/validation";
 
 import type { Route } from "./+types/reminders";
@@ -13,9 +15,13 @@ export function meta() {
   return [{ title: "Rappels · Hearth" }];
 }
 
-export async function loader() {
-  const reminders = await getReminders();
-  return { reminders };
+export async function loader({ request }: Route.LoaderArgs) {
+  const [reminders, members, currentMemberId] = await Promise.all([
+    getReminders(),
+    getOrderedMembers(),
+    getCurrentMemberId(request),
+  ]);
+  return { reminders, members, currentMemberId };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -30,6 +36,7 @@ export async function action({ request }: Route.ActionArgs) {
     await createReminder({
       title: result.data.title,
       dueAt: new Date(result.data.dueAt),
+      memberId: result.data.memberId,
     });
     return { ok: true };
   }
@@ -43,6 +50,7 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function Reminders({ loaderData }: Route.ComponentProps) {
+  const { members, currentMemberId } = loaderData;
   const [modalOpen, setModalOpen] = useState(false);
   const fetcher = useFetcher<typeof action>();
   const errors = fetcher.data && "errors" in fetcher.data ? fetcher.data.errors : undefined;
@@ -57,7 +65,7 @@ export default function Reminders({ loaderData }: Route.ComponentProps) {
       />
       <div className="flex max-w-[640px] flex-col gap-2.5">
         {loaderData.reminders.map((reminder) => (
-          <ReminderRow key={reminder.id} reminder={reminder} />
+          <ReminderRow key={reminder.id} reminder={reminder} members={members} />
         ))}
       </div>
 
@@ -81,6 +89,13 @@ export default function Reminders({ loaderData }: Route.ComponentProps) {
             {dueAtErrors[0]}
           </p>
         )}
+        <Select label="Pour qui ?" name="memberId" defaultValue={currentMemberId ?? members[0]?.id} required>
+          {members.map((member) => (
+            <option key={member.id} value={member.id}>
+              {member.name}
+            </option>
+          ))}
+        </Select>
       </Modal>
     </div>
   );

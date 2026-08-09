@@ -54,7 +54,7 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
       </div>
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-        <ReminderWidget reminders={dueReminders} />
+        <ReminderWidget reminders={dueReminders} members={members} />
         <ShoppingWidget lists={shoppingLists} />
         <CleaningWidget weekChores={weekChores} />
       </div>
