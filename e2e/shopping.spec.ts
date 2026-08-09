@@ -16,7 +16,10 @@ test("checking a shopping item toggles it without navigating", async ({ page }) 
   const checkbox = milkRow.getByRole("checkbox");
   await expect(checkbox).not.toBeChecked();
 
-  await checkbox.check();
+  // Controlled checkbox (checked state comes from fetcher state, not the
+  // native toggle) — .click() rather than .check(), which asserts the
+  // native toggle took effect before our re-render lands.
+  await checkbox.click();
 
   await expect(checkbox).toBeChecked();
   await expect(milkRow.getByText("Milk")).toHaveClass(/line-through/);

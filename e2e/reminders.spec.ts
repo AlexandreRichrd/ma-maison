@@ -9,7 +9,9 @@ test.beforeEach(async ({ page }) => {
 test("toggles a reminder done and back to undone", async ({ page }) => {
   await page.goto("/reminders");
 
-  const row = page.locator("div", { hasText: "Restock paper towels" }).last();
+  // Scope to the Card (not just any ancestor <div>, which would match
+  // the innermost text wrapper that doesn't contain the button).
+  const row = page.locator("div.rounded-2xl", { hasText: "Restock paper towels" });
   const toggleButton = row.getByRole("button", { name: "Done" });
   await toggleButton.click();
 
