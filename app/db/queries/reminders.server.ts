@@ -17,6 +17,17 @@ export async function getDueTodayReminders(): Promise<Reminder[]> {
     .orderBy(asc(reminders.dueAt));
 }
 
+export async function createReminder(params: {
+  title: string;
+  dueAt: Date;
+}): Promise<void> {
+  await db.insert(reminders).values({
+    title: params.title,
+    dueAt: params.dueAt,
+    doneAt: null,
+  });
+}
+
 export async function toggleReminder(reminderId: string): Promise<void> {
   const [reminder] = await db
     .select()

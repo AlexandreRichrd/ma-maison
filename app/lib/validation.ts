@@ -46,3 +46,12 @@ export const toggleReminderSchema = z.object({
   intent: z.literal("toggleReminder"),
   reminderId: z.uuid(),
 });
+
+export const addReminderSchema = z.object({
+  intent: z.literal("addReminder"),
+  title: z.string().trim().min(1, "Le titre est requis"),
+  dueAt: z
+    .string()
+    .min(1, "La date est requise")
+    .refine((value) => !Number.isNaN(new Date(value).getTime()), "Date invalide"),
+});

@@ -73,7 +73,8 @@ Name normalisation (trim, lowercase, collapse whitespace) lives in
 
 ### Reminders
 Flat list with time and a done/undo toggle. Reversible; there is no
-delete-on-complete.
+delete-on-complete. `+ Add reminder` opens the shared Modal (title +
+due date/time); no edit or delete yet.
 
 ### Household
 Member list with role. Edit and invite buttons are **static placeholders** —
