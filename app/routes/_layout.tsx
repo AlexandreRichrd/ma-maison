@@ -5,23 +5,28 @@ import { MobileHeader } from "~/components/layout/MobileHeader";
 import { MobileNavDrawer } from "~/components/layout/MobileNavDrawer";
 import { Sidebar } from "~/components/layout/Sidebar";
 import { getOrderedMembers } from "~/db/queries/household.server";
-import { requireSession } from "~/lib/auth.server";
+import { getCurrentMemberId, requireSession } from "~/lib/auth.server";
 
 import type { Route } from "./+types/_layout";
 
 export async function loader({ request }: Route.LoaderArgs) {
   await requireSession(request);
-  const members = await getOrderedMembers();
-  return { members };
+  const [members, currentMemberId] = await Promise.all([
+    getOrderedMembers(),
+    getCurrentMemberId(request),
+  ]);
+  return { members, currentMemberId };
 }
 
 export default function AppLayout({ loaderData }: Route.ComponentProps) {
   const [navOpen, setNavOpen] = useState(false);
-  const { members } = loaderData;
+  const { members, currentMemberId } = loaderData;
+  const currentMember =
+    members.find((member) => member.id === currentMemberId) ?? members[0];
 
   return (
     <div className="flex min-h-screen flex-col">
-      <MobileHeader members={members} onOpenNav={() => setNavOpen(true)} />
+      <MobileHeader currentMember={currentMember} onOpenNav={() => setNavOpen(true)} />
       <MobileNavDrawer open={navOpen} onClose={() => setNavOpen(false)} members={members} />
 
       <div className="flex min-h-0 flex-1">

@@ -72,6 +72,26 @@ export async function requireSession(request: Request): Promise<void> {
   }
 }
 
+/** Which household member the dashboard greeting etc. currently addresses. */
+export async function getCurrentMemberId(request: Request): Promise<string | null> {
+  const session = await sessionStorage.getSession(
+    request.headers.get("Cookie"),
+  );
+  const id = session.get("currentMemberId");
+  return typeof id === "string" ? id : null;
+}
+
+export async function setCurrentMemberId(
+  request: Request,
+  memberId: string,
+): Promise<string> {
+  const session = await sessionStorage.getSession(
+    request.headers.get("Cookie"),
+  );
+  session.set("currentMemberId", memberId);
+  return sessionStorage.commitSession(session);
+}
+
 export async function destroySession(request: Request): Promise<Response> {
   const session = await sessionStorage.getSession(
     request.headers.get("Cookie"),
