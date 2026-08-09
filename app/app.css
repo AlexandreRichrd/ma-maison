@@ -5,6 +5,11 @@
     "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   --font-serif: "Lora", ui-serif, Georgia, serif;
 
+  /* Sidebar/drawer swap point, matches the mockup's isMobile check. Not one
+     of Tailwind's default breakpoints, so named separately: `nav:` and
+     `max-nav:` variants. */
+  --breakpoint-nav: 860px;
+
   /* Semantic tokens (CLAUDE.md: bg-surface / text-muted, not raw palette values) */
   --color-surface: oklch(98% 0.01 60);
   --color-sidebar: oklch(99% 0.006 60);
