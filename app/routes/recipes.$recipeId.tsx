@@ -36,7 +36,9 @@ export async function action({ request, params }: Route.ActionArgs) {
     const outcome = await addIngredientsToList(params.recipeId, {
       listId: result.data.listId,
     });
-    return { outcome };
+    const lists = await getShoppingLists();
+    const listName = lists.find((l) => l.id === result.data.listId)?.name ?? "list";
+    return { outcome, listName };
   }
 
   if (intent === "addAsNewList") {
@@ -63,12 +65,10 @@ export default function RecipeDetail({ loaderData }: Route.ComponentProps) {
   const confirmation = (() => {
     const result = existingFetcher.data;
     if (!result || !("outcome" in result)) return null;
-    const submittedListId = existingFetcher.formData?.get("listId");
-    const list = shoppingLists.find((l) => l.id === submittedListId);
     const parts = [];
     if (result.outcome.added > 0) parts.push(`added ${result.outcome.added}`);
     if (result.outcome.merged > 0) parts.push(`merged ${result.outcome.merged}`);
-    return `${parts.join(", ") || "Nothing to add"} into "${list?.name ?? "list"}".`;
+    return `${parts.join(", ") || "Nothing to add"} into "${result.listName}".`;
   })();
 
   return (
