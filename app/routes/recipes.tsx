@@ -5,7 +5,7 @@ import { getRecipes } from "~/db/queries/recipes.server";
 import type { Route } from "./+types/recipes";
 
 export function meta() {
-  return [{ title: "Recipes · Hearth" }];
+  return [{ title: "Recettes · Hearth" }];
 }
 
 export async function loader() {
@@ -16,7 +16,7 @@ export async function loader() {
 export default function Recipes({ loaderData }: Route.ComponentProps) {
   return (
     <div>
-      <PageHeader title="Recipes" />
+      <PageHeader title="Recettes" />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {loaderData.recipes.map((recipe) => (
           <RecipeCard key={recipe.id} recipe={recipe} />

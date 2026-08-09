@@ -7,7 +7,7 @@ import type { Route } from "./+types/household";
 const AVATAR_COLORS = ["bg-avatar-1", "bg-avatar-2"];
 
 export function meta() {
-  return [{ title: "Household · Hearth" }];
+  return [{ title: "Foyer · Hearth" }];
 }
 
 export async function loader() {
@@ -19,9 +19,9 @@ export default function Household({ loaderData }: Route.ComponentProps) {
   return (
     <div>
       <PageHeader
-        title="Household"
+        title="Foyer"
         // Static placeholder — intentionally not wired, per CLAUDE.md.
-        action={<Button disabled>+ Invite member</Button>}
+        action={<Button disabled>+ Inviter un membre</Button>}
       />
       <div className="flex max-w-[560px] flex-col gap-2.5">
         {loaderData.members.map((member, index) => (
@@ -37,7 +37,7 @@ export default function Household({ loaderData }: Route.ComponentProps) {
             </div>
             {/* Static placeholder — intentionally not wired, per CLAUDE.md. */}
             <Button variant="secondary" disabled>
-              Edit
+              Modifier
             </Button>
           </Card>
         ))}

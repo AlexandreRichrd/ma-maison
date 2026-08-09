@@ -19,7 +19,7 @@ export function MobileHeader({
       <button
         type="button"
         onClick={onOpenNav}
-        aria-label="Menu"
+        aria-label="Ouvrir le menu"
         className="flex size-11 shrink-0 flex-col items-center justify-center gap-1 rounded-lg border border-border bg-card"
       >
         <span className="h-0.5 w-4.5 bg-foreground/80" />

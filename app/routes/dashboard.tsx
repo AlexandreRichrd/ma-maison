@@ -7,14 +7,13 @@ import { getOrderedMembers } from "~/db/queries/household.server";
 import type { Route } from "./+types/dashboard";
 
 export function meta() {
-  return [{ title: "Dashboard · Hearth" }];
+  return [{ title: "Tableau de bord · Hearth" }];
 }
 
 function getGreeting(): string {
   const hour = new Date().getHours();
-  if (hour < 12) return "Good morning";
-  if (hour < 18) return "Good afternoon";
-  return "Good evening";
+  if (hour < 18) return "Bonjour";
+  return "Bonsoir";
 }
 
 export async function loader() {
@@ -27,15 +26,15 @@ export async function loader() {
 
 export default function Dashboard({ loaderData }: Route.ComponentProps) {
   const { dueReminders, shoppingLists, weekChores, members } = loaderData;
-  const firstName = members[0]?.name ?? "there";
+  const firstName = members[0]?.name ?? "";
 
   return (
     <div>
       <h1 className="mb-1 font-serif text-2xl font-bold">
-        {getGreeting()}, {firstName}
+        {getGreeting()}{firstName ? `, ${firstName}` : ""}
       </h1>
       <p className="mb-7 text-sm text-muted">
-        Here&rsquo;s what&rsquo;s going on at home today.
+        Voici ce qui se passe à la maison aujourd&rsquo;hui.
       </p>
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">

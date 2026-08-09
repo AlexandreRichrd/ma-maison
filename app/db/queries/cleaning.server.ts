@@ -9,7 +9,7 @@ import { getOrderedMembers } from "./household.server";
 export type ChoreView = {
   id: string;
   name: string;
-  tag: "Weekly" | "Every 2 wks";
+  tag: "Chaque semaine" | "Toutes les 2 semaines";
   done: boolean;
 };
 
@@ -57,13 +57,13 @@ export async function getWeekChores(
       ...byGroup(memberAssignment.weeklyGroup).map((chore) => ({
         id: chore.id,
         name: chore.name,
-        tag: "Weekly" as const,
+        tag: "Chaque semaine" as const,
         done: completedChoreIds.has(chore.id),
       })),
       ...byGroup(memberAssignment.biweeklyGroup).map((chore) => ({
         id: chore.id,
         name: chore.name,
-        tag: "Every 2 wks" as const,
+        tag: "Toutes les 2 semaines" as const,
         done: completedChoreIds.has(chore.id),
       })),
     ],

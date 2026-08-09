@@ -8,7 +8,7 @@ export function HouseholdFooter({ members }: { members: Member[] }) {
   return (
     <div className="mt-auto flex flex-col gap-2.5">
       <div className="px-2 text-xs font-semibold tracking-wide text-muted uppercase">
-        Household
+        Foyer
       </div>
       {members.map((member, index) => (
         <div key={member.id} className="flex items-center gap-2.5 px-2 py-1.5">
@@ -22,7 +22,7 @@ export function HouseholdFooter({ members }: { members: Member[] }) {
       ))}
       <Form method="post" action="/logout" className="px-2 pt-1">
         <button type="submit" className="text-xs font-semibold text-muted hover:text-foreground">
-          Sign out
+          Déconnexion
         </button>
       </Form>
     </div>

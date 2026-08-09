@@ -7,7 +7,7 @@ export function ShoppingListCard({ list }: { list: ShoppingListPreview }) {
   return (
     <Link to={`/shopping/${list.id}`} className={cardClassName}>
       <div className="mb-1 font-serif text-base font-semibold">{list.name}</div>
-      <div className="text-sm font-semibold text-accent">{list.openCount} items left</div>
+      <div className="text-sm font-semibold text-accent">{list.openCount} articles restants</div>
     </Link>
   );
 }

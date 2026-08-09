@@ -7,6 +7,7 @@ import {
   setISOWeekYear,
   startOfISOWeek,
 } from "date-fns";
+import { fr } from "date-fns/locale";
 
 const ISO_WEEK_PATTERN = /^(\d{4})-W(\d{2})$/;
 
@@ -48,8 +49,8 @@ export function formatWeekLabel(isoWeek: string): string {
   const start = parseIsoWeek(isoWeek);
   const end = endOfISOWeek(start);
   const sameMonth = start.getMonth() === end.getMonth();
-  const startLabel = format(start, sameMonth ? "MMM d" : "MMM d");
-  const endLabel = format(end, sameMonth ? "d" : "MMM d");
-  const prefix = isoWeek === getCurrentIsoWeek() ? "This week · " : "";
+  const startLabel = format(start, sameMonth ? "d" : "d MMMM", { locale: fr });
+  const endLabel = format(end, "d MMMM", { locale: fr });
+  const prefix = isoWeek === getCurrentIsoWeek() ? "Cette semaine · " : "";
   return `${prefix}${startLabel} – ${endLabel}`;
 }

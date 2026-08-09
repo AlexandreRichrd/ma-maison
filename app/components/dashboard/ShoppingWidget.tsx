@@ -7,9 +7,9 @@ export function ShoppingWidget({ lists }: { lists: ShoppingListPreview[] }) {
   return (
     <Card>
       <div className="mb-3.5 flex items-center justify-between">
-        <h2 className="font-serif text-lg font-semibold">Shopping Lists</h2>
+        <h2 className="font-serif text-lg font-semibold">Listes de courses</h2>
         <Link to="/shopping" className="text-sm font-semibold">
-          View all →
+          Tout voir →
         </Link>
       </div>
       <div className="flex flex-col gap-2.5">
@@ -20,7 +20,7 @@ export function ShoppingWidget({ lists }: { lists: ShoppingListPreview[] }) {
             className="flex items-center justify-between rounded-lg border border-border px-3 py-2.5 text-foreground"
           >
             <span className="text-sm font-semibold">{list.name}</span>
-            <span className="text-sm font-medium text-muted">{list.openCount} left</span>
+            <span className="text-sm font-medium text-muted">{list.openCount} restants</span>
           </Link>
         ))}
       </div>

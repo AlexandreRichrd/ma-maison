@@ -41,7 +41,7 @@ async function main() {
     .insert(members)
     .values([
       { householdId: household.id, name: "Mia", role: "Parent", avatarKey: "mia" },
-      { householdId: household.id, name: "Sam", role: "Partner", avatarKey: "sam" },
+      { householdId: household.id, name: "Sam", role: "Partenaire", avatarKey: "sam" },
     ])
     .returning();
 
@@ -51,47 +51,55 @@ async function main() {
     .where(eq(households.id, household.id));
 
   await db.insert(chores).values([
-    { name: "Kitchen", rotationGroup: "A" },
-    { name: "Trash", rotationGroup: "A" },
-    { name: "Bathroom", rotationGroup: "B" },
+    { name: "Cuisine", rotationGroup: "A" },
+    { name: "Poubelles", rotationGroup: "A" },
+    { name: "Salle de bain", rotationGroup: "B" },
     { name: "Surfaces", rotationGroup: "B" },
-    { name: "Floors", rotationGroup: "B" },
-    { name: "Bedsheets", rotationGroup: "C" },
-    { name: "Corridor", rotationGroup: "D" },
+    { name: "Sols", rotationGroup: "B" },
+    { name: "Draps", rotationGroup: "C" },
+    { name: "Couloir", rotationGroup: "D" },
   ]);
 
   const [groceries, costco] = await db
     .insert(shoppingLists)
-    .values([{ name: "Weekly Groceries" }, { name: "Costco Run" }])
+    .values([{ name: "Courses de la semaine" }, { name: "Courses chez Costco" }])
     .returning();
 
   await db.insert(shoppingItems).values([
-    { listId: groceries.id, name: "Milk", quantity: "2", unit: "", checked: false },
-    { listId: groceries.id, name: "Eggs", quantity: "1", unit: "dozen", checked: false },
-    { listId: groceries.id, name: "Bread", quantity: "1", unit: "loaf", checked: true },
-    { listId: groceries.id, name: "Spinach", quantity: "1", unit: "bag", checked: false },
-    { listId: costco.id, name: "Paper towels", quantity: "1", unit: "pack", checked: false },
-    { listId: costco.id, name: "Chicken breast", quantity: "2", unit: "lb", checked: false },
+    { listId: groceries.id, name: "Lait", quantity: "2", unit: "", checked: false },
+    { listId: groceries.id, name: "Œufs", quantity: "1", unit: "douzaine", checked: false },
+    { listId: groceries.id, name: "Pain", quantity: "1", unit: "miche", checked: true },
+    { listId: groceries.id, name: "Épinards", quantity: "1", unit: "sachet", checked: false },
+    { listId: costco.id, name: "Essuie-tout", quantity: "1", unit: "paquet", checked: false },
+    { listId: costco.id, name: "Blancs de poulet", quantity: "1", unit: "kg", checked: false },
   ]);
 
   const [bolognese, stirFry] = await db
     .insert(recipes)
     .values([
-      { name: "Spaghetti Bolognese", servings: 4, instructions: "Brown the beef, add sauce, simmer, serve over pasta." },
-      { name: "Veggie Stir Fry", servings: 2, instructions: "Stir fry the vegetables, add sauce, serve over rice." },
+      {
+        name: "Spaghetti à la bolognaise",
+        servings: 4,
+        instructions: "Faire revenir le bœuf, ajouter la sauce, laisser mijoter, servir avec des pâtes.",
+      },
+      {
+        name: "Poêlée de légumes",
+        servings: 2,
+        instructions: "Faire sauter les légumes, ajouter la sauce, servir avec du riz.",
+      },
     ])
     .returning();
 
   await db.insert(recipeIngredients).values([
-    { recipeId: bolognese.id, name: "Ground beef", quantity: "1", unit: "lb", position: 0 },
-    { recipeId: bolognese.id, name: "Spaghetti", quantity: "1", unit: "box", position: 1 },
-    { recipeId: bolognese.id, name: "Tomato sauce", quantity: "1", unit: "jar", position: 2 },
-    { recipeId: bolognese.id, name: "Onion", quantity: "1", unit: "", position: 3 },
-    { recipeId: bolognese.id, name: "Garlic", quantity: "2", unit: "cloves", position: 4 },
-    { recipeId: stirFry.id, name: "Broccoli", quantity: "1", unit: "head", position: 0 },
-    { recipeId: stirFry.id, name: "Bell pepper", quantity: "2", unit: "", position: 1 },
-    { recipeId: stirFry.id, name: "Soy sauce", quantity: "1", unit: "bottle", position: 2 },
-    { recipeId: stirFry.id, name: "Rice", quantity: "2", unit: "cups", position: 3 },
+    { recipeId: bolognese.id, name: "Bœuf haché", quantity: "500", unit: "g", position: 0 },
+    { recipeId: bolognese.id, name: "Spaghettis", quantity: "1", unit: "paquet", position: 1 },
+    { recipeId: bolognese.id, name: "Sauce tomate", quantity: "1", unit: "pot", position: 2 },
+    { recipeId: bolognese.id, name: "Oignon", quantity: "1", unit: "", position: 3 },
+    { recipeId: bolognese.id, name: "Ail", quantity: "2", unit: "gousses", position: 4 },
+    { recipeId: stirFry.id, name: "Brocoli", quantity: "1", unit: "tête", position: 0 },
+    { recipeId: stirFry.id, name: "Poivron", quantity: "2", unit: "", position: 1 },
+    { recipeId: stirFry.id, name: "Sauce soja", quantity: "1", unit: "bouteille", position: 2 },
+    { recipeId: stirFry.id, name: "Riz", quantity: "300", unit: "g", position: 3 },
   ]);
 
   const now = new Date();
@@ -104,9 +112,9 @@ async function main() {
   today6pm.setHours(18, 0, 0, 0);
 
   await db.insert(reminders).values([
-    { title: "Trash day tomorrow", dueAt: tomorrow7am, doneAt: null },
-    { title: "Restock paper towels", dueAt: today2pm, doneAt: null },
-    { title: "Water the plants", dueAt: today6pm, doneAt: new Date() },
+    { title: "Sortir les poubelles demain", dueAt: tomorrow7am, doneAt: null },
+    { title: "Racheter de l'essuie-tout", dueAt: today2pm, doneAt: null },
+    { title: "Arroser les plantes", dueAt: today6pm, doneAt: new Date() },
   ]);
 
   console.log("Seeded:", { household: household.id, members: [mia.name, sam.name] });

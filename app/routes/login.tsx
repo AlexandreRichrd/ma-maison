@@ -7,7 +7,7 @@ import { loginSchema } from "~/lib/validation";
 import type { Route } from "./+types/login";
 
 export function meta() {
-  return [{ title: "Sign in · Hearth" }];
+  return [{ title: "Connexion · Hearth" }];
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -27,7 +27,7 @@ export async function action({ request }: Route.ActionArgs) {
   const ok = await login(result.data.password);
   if (!ok) {
     return data(
-      { errors: { password: ["Incorrect password"] } },
+      { errors: { password: ["Mot de passe incorrect"] } },
       { status: 400 },
     );
   }
@@ -44,7 +44,7 @@ export default function Login({ actionData }: Route.ComponentProps) {
         <div className="mb-5 font-serif text-xl font-bold">Hearth</div>
         <Form method="post" className="flex flex-col gap-3">
           <Input
-            label="Household password"
+            label="Mot de passe du foyer"
             name="password"
             type="password"
             autoFocus
@@ -56,7 +56,7 @@ export default function Login({ actionData }: Route.ComponentProps) {
             </p>
           )}
           <Button type="submit" className="mt-2">
-            Sign in
+            Se connecter
           </Button>
         </Form>
       </Card>

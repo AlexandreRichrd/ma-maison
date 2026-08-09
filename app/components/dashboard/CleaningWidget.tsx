@@ -9,9 +9,9 @@ export function CleaningWidget({ weekChores }: { weekChores: MemberWeekChores[] 
   return (
     <Card>
       <div className="mb-3.5 flex items-center justify-between">
-        <h2 className="font-serif text-lg font-semibold">Cleaning — by person</h2>
+        <h2 className="font-serif text-lg font-semibold">Ménage — par personne</h2>
         <Link to="/cleaning" className="text-sm font-semibold">
-          View all →
+          Tout voir →
         </Link>
       </div>
       <div className="flex flex-col gap-2.5">

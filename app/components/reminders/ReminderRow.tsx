@@ -17,9 +17,9 @@ export function ReminderRow({ reminder }: { reminder: Reminder }) {
           {reminder.title}
         </div>
         <div className="text-sm font-medium text-muted">
-          {new Intl.DateTimeFormat(undefined, {
+          {new Intl.DateTimeFormat("fr-FR", {
             weekday: "short",
-            hour: "numeric",
+            hour: "2-digit",
             minute: "2-digit",
           }).format(reminder.dueAt)}
         </div>
@@ -28,7 +28,7 @@ export function ReminderRow({ reminder }: { reminder: Reminder }) {
         <input type="hidden" name="intent" value="toggleReminder" />
         <input type="hidden" name="reminderId" value={reminder.id} />
         <Button type="submit" variant="secondary" disabled={fetcher.state !== "idle"}>
-          {done ? "Undo" : "Done"}
+          {done ? "Annuler" : "Terminé"}
         </Button>
       </fetcher.Form>
     </Card>

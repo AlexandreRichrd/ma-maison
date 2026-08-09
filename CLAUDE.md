@@ -246,6 +246,12 @@ commit without asking each time, scoped to local commits only.
 - No `any`. No non-null assertions (`!`) — narrow properly
 - Dates: store UTC, render in the household's local timezone
 - Quantities: `numeric` in Postgres, strings in TS. Never floats
+- The household is French-speaking. All user-facing text (UI copy, Zod
+  validation messages, seeded demo data) is French, hardcoded directly in
+  components — no i18n library, no translation-key indirection, since this
+  app is single-language by design. Date/time formatting uses the `fr`
+  date-fns locale and `Intl` with `"fr-FR"`. Code identifiers, comments, and
+  commit messages stay in English.
 
 ## Testing
 

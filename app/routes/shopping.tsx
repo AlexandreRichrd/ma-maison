@@ -10,7 +10,7 @@ import { newListSchema } from "~/lib/validation";
 import type { Route } from "./+types/shopping";
 
 export function meta() {
-  return [{ title: "Shopping · Hearth" }];
+  return [{ title: "Courses · Hearth" }];
 }
 
 export async function loader() {
@@ -38,8 +38,8 @@ export default function Shopping({ loaderData }: Route.ComponentProps) {
   return (
     <div>
       <PageHeader
-        title="Shopping Lists"
-        action={<Button onClick={() => setModalOpen(true)}>+ New list</Button>}
+        title="Listes de courses"
+        action={<Button onClick={() => setModalOpen(true)}>+ Nouvelle liste</Button>}
       />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {lists.map((list) => (
@@ -49,13 +49,13 @@ export default function Shopping({ loaderData }: Route.ComponentProps) {
 
       <Modal
         open={modalOpen}
-        title="New shopping list"
+        title="Nouvelle liste de courses"
         onClose={() => setModalOpen(false)}
         fetcher={fetcher}
-        submitLabel="Create list"
+        submitLabel="Créer la liste"
       >
         <input type="hidden" name="intent" value="newList" />
-        <Input label="List name" name="name" required autoFocus />
+        <Input label="Nom de la liste" name="name" required autoFocus />
         {errors?.name && (
           <p className="text-sm font-medium text-accent" role="alert">
             {errors.name[0]}

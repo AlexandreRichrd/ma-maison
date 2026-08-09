@@ -15,14 +15,14 @@ import type { Route } from "./+types/shopping.$listId";
 
 export function meta({ loaderData }: Route.MetaArgs) {
   return [
-    { title: loaderData ? `${loaderData.list.name} · Hearth` : "Shopping · Hearth" },
+    { title: loaderData ? `${loaderData.list.name} · Hearth` : "Courses · Hearth" },
   ];
 }
 
 export async function loader({ params }: Route.LoaderArgs) {
   const detail = await getShoppingListDetail(params.listId);
   if (!detail) {
-    throw data("Not Found", { status: 404 });
+    throw data("Introuvable", { status: 404 });
   }
   return detail;
 }
@@ -49,7 +49,7 @@ export async function action({ request, params }: Route.ActionArgs) {
     return { ok: true };
   }
 
-  throw data("Unknown intent", { status: 400 });
+  throw data("Intention inconnue", { status: 400 });
 }
 
 export default function ShoppingListDetail({ loaderData }: Route.ComponentProps) {
@@ -63,13 +63,13 @@ export default function ShoppingListDetail({ loaderData }: Route.ComponentProps)
   return (
     <div>
       <PageHeader
-        back={{ to: "/shopping", label: "← All lists" }}
+        back={{ to: "/shopping", label: "← Toutes les listes" }}
         title={list.name}
-        action={<Button onClick={() => setModalOpen(true)}>+ Add item</Button>}
+        action={<Button onClick={() => setModalOpen(true)}>+ Ajouter un article</Button>}
       />
       <div className={`${cardClassName} overflow-hidden p-0`}>
         {items.length === 0 ? (
-          <p className="p-4.5 text-sm text-muted">No items yet.</p>
+          <p className="p-4.5 text-sm text-muted">Aucun article pour l&rsquo;instant.</p>
         ) : (
           items.map((item) => <ShoppingItemRow key={item.id} item={item} />)
         )}
@@ -77,25 +77,25 @@ export default function ShoppingListDetail({ loaderData }: Route.ComponentProps)
 
       <Modal
         open={modalOpen}
-        title="Add item"
+        title="Ajouter un article"
         onClose={() => setModalOpen(false)}
         fetcher={fetcher}
-        submitLabel="Add item"
+        submitLabel="Ajouter"
       >
         <input type="hidden" name="intent" value="addItem" />
-        <Input label="Item name" name="name" required autoFocus />
+        <Input label="Nom de l'article" name="name" required autoFocus />
         {nameErrors && (
           <p className="text-sm font-medium text-accent" role="alert">
             {nameErrors[0]}
           </p>
         )}
-        <Input label="Quantity" name="quantity" defaultValue="1" required />
+        <Input label="Quantité" name="quantity" defaultValue="1" required />
         {quantityErrors && (
           <p className="text-sm font-medium text-accent" role="alert">
             {quantityErrors[0]}
           </p>
         )}
-        <Input label="Unit (optional)" name="unit" placeholder="lb, dozen, bag…" />
+        <Input label="Unité (optionnel)" name="unit" placeholder="kg, boîte, sachet…" />
       </Modal>
     </div>
   );

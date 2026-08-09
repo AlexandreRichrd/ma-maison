@@ -9,7 +9,7 @@ import { formatWeekLabel, getCurrentIsoWeek, isValidIsoWeek } from "~/lib/week";
 import type { Route } from "./+types/cleaning";
 
 export function meta() {
-  return [{ title: "Cleaning · Hearth" }];
+  return [{ title: "Ménage · Hearth" }];
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -39,7 +39,7 @@ export default function Cleaning({ loaderData }: Route.ComponentProps) {
 
   return (
     <div>
-      <h1 className="mb-1.5 font-serif text-2xl font-bold">Cleaning</h1>
+      <h1 className="mb-1.5 font-serif text-2xl font-bold">Ménage</h1>
       <WeekNavigator isoWeek={isoWeek} label={formatWeekLabel(isoWeek)} />
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         {weekChores.map((memberChores, index) => (
@@ -52,8 +52,8 @@ export default function Cleaning({ loaderData }: Route.ComponentProps) {
         ))}
       </div>
       <p className="mt-5 text-sm font-medium text-muted">
-        Kitchen/trash and bathroom/surfaces/floors swap every week. Bedsheets and corridor swap
-        every 2 weeks.
+        Cuisine/poubelles et salle de bain/surfaces/sols changent chaque semaine. Draps et couloir
+        changent toutes les 2 semaines.
       </p>
     </div>
   );

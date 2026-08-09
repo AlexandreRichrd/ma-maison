@@ -8,7 +8,7 @@ import { toggleReminderSchema } from "~/lib/validation";
 import type { Route } from "./+types/reminders";
 
 export function meta() {
-  return [{ title: "Reminders · Hearth" }];
+  return [{ title: "Rappels · Hearth" }];
 }
 
 export async function loader() {
@@ -29,7 +29,7 @@ export async function action({ request }: Route.ActionArgs) {
 export default function Reminders({ loaderData }: Route.ComponentProps) {
   return (
     <div>
-      <PageHeader title="Reminders" />
+      <PageHeader title="Rappels" />
       <div className="flex max-w-[640px] flex-col gap-2.5">
         {loaderData.reminders.map((reminder) => (
           <ReminderRow key={reminder.id} reminder={reminder} />

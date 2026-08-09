@@ -8,7 +8,7 @@ export function RecipeCard({ recipe }: { recipe: RecipePreview }) {
     <Link to={`/recipes/${recipe.id}`} className={cardClassName}>
       <div className="mb-1 font-serif text-base font-semibold">{recipe.name}</div>
       <div className="text-sm font-medium text-muted">
-        {recipe.servings} servings · {recipe.ingredientCount} ingredients
+        {recipe.servings} portions · {recipe.ingredientCount} ingrédients
       </div>
     </Link>
   );

@@ -3,22 +3,22 @@ import { z } from "zod";
 import { isValidIsoWeek } from "./week";
 
 export const loginSchema = z.object({
-  password: z.string().min(1, "Password is required"),
+  password: z.string().min(1, "Le mot de passe est requis"),
 });
 
 export const newListSchema = z.object({
   intent: z.literal("newList"),
-  name: z.string().trim().min(1, "List name is required"),
+  name: z.string().trim().min(1, "Le nom de la liste est requis"),
 });
 
 export const addItemSchema = z.object({
   intent: z.literal("addItem"),
-  name: z.string().trim().min(1, "Item name is required"),
+  name: z.string().trim().min(1, "Le nom de l'article est requis"),
   quantity: z
     .string()
     .trim()
-    .min(1, "Quantity is required")
-    .regex(/^\d+(\.\d+)?$/, "Quantity must be a number"),
+    .min(1, "La quantité est requise")
+    .regex(/^\d+(\.\d+)?$/, "La quantité doit être un nombre"),
   unit: z.string().trim().max(40).optional().default(""),
 });
 
@@ -39,7 +39,7 @@ export const addAsNewListSchema = z.object({
 export const toggleChoreSchema = z.object({
   intent: z.literal("toggleChore"),
   choreId: z.uuid(),
-  isoWeek: z.string().refine(isValidIsoWeek, "Invalid ISO week"),
+  isoWeek: z.string().refine(isValidIsoWeek, "Semaine ISO invalide"),
 });
 
 export const toggleReminderSchema = z.object({

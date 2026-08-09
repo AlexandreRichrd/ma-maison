@@ -25,7 +25,7 @@ export function Modal<TData>({
   title,
   onClose,
   fetcher,
-  submitLabel = "Save",
+  submitLabel = "Enregistrer",
   children,
 }: ModalProps<TData>) {
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -94,10 +94,10 @@ export function Modal<TData>({
           {children}
           <div className="mt-2 flex justify-end gap-2.5">
             <Button type="button" variant="secondary" onClick={onClose}>
-              Cancel
+              Annuler
             </Button>
             <Button type="submit" disabled={pending}>
-              {pending ? "Saving…" : submitLabel}
+              {pending ? "Enregistrement…" : submitLabel}
             </Button>
           </div>
         </fetcher.Form>

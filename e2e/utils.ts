@@ -5,7 +5,7 @@ export const DEV_PASSWORD = "devpassword";
 
 export async function login(page: Page): Promise<void> {
   await page.goto("/login");
-  await page.getByLabel("Household password").fill(DEV_PASSWORD);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByLabel("Mot de passe du foyer").fill(DEV_PASSWORD);
+  await page.getByRole("button", { name: "Se connecter" }).click();
   await page.waitForURL("/");
 }
