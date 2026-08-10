@@ -4,13 +4,15 @@ Project instructions for Claude Code. Read this before making changes.
 
 ## Project
 
-**Home Manager** — a self-hosted household intranet. A single React Router v7
+**Home Manager** — a self-hosted household app. A single React Router v7
 application containing both frontend and backend (server-side loaders/actions),
-backed by PostgreSQL. Runs on a home server, reachable over VPN only. Never
-exposed to the public internet.
+backed by PostgreSQL. Runs on a VPS behind a Caddy reverse proxy, reachable
+over the public internet — see Deployment. Public reachability does not mean
+public sign-up: there is no way to create an account except being seeded in
+directly.
 
-Scoped to **one household with two members**. Do not build multi-tenancy, org
-hierarchies, or role permission systems.
+Scoped to **one household with two users**. Do not build multi-tenancy, org
+hierarchies, third-party household sign-up, or role permission systems.
 
 ## Stack
 
@@ -33,7 +35,8 @@ Persistent sidebar navigation. Six sections.
 Read-only overview, one loader aggregating three sources:
 - reminders due today
 - shopping list previews (name + open-item count)
-- this week's cleaning chores, grouped by person
+- this week's cleaning chores, grouped by person — signed-in user's column
+  first, but both people always shown (see Cleaning)
 
 Every widget links into its owning section. No mutations happen here.
 
@@ -68,19 +71,28 @@ Name normalisation (trim, lowercase, collapse whitespace) lives in
 - Week navigator (`←` / `→`), driven by a `?week=` search param holding an ISO
   week string (`2026-W32`). Never keep the current week in component state: the
   URL is the source of truth so the view is linkable and refresh-safe.
-- Two-person chore view, each chore independently checkable.
-- Assignment is **derived, not stored** — see below.
+  This does not change now that users are signed in individually.
+- Two-person chore view, each chore independently checkable. The
+  **signed-in user's column is displayed first**, but **both columns stay
+  visible** — on Cleaning and on the Dashboard widget. Never hide the other
+  person's chores; seeing the split is the whole point of the section.
+- Assignment is **derived, not stored** — see below. The stable, explicit
+  anchor that ordering depends on is `households.member_order` (see Chore
+  rotation) — never derive "whose column is first" from query result order,
+  or the pairing could flip depending on who's signed in.
 
 ### Reminders
 Flat list with time and a done/undo toggle. Reversible; there is no
 delete-on-complete. `+ Add reminder` opens the shared Modal (title,
-due date/time, and assignee checkboxes — either or both members); no
+due date/time, and assignee checkboxes — either or both users); no
 edit or delete yet. Each assignee shows as a chip colored the same as
-that member's avatar elsewhere in the UI.
+that user's avatar elsewhere in the UI.
 
 ### Household
-Member list with role. Edit and invite buttons are **static placeholders** —
-present in the UI, intentionally not wired. Do not implement them without being asked.
+User list with role. Edit and invite buttons are **static placeholders** —
+present in the UI, intentionally not wired. Do not implement them without
+being asked, even now that real accounts exist — inviting someone is still
+out of scope (see Authentication, Not in scope yet).
 
 ## Chore rotation
 
@@ -104,11 +116,14 @@ Bedsheets does not have Corridor that week.
 
 Rules:
 
-- Signature: `getWeekAssignment(isoWeek: string, members: [Member, Member]): Assignment`
+- Signature: `getWeekAssignment(isoWeek: string, users: [User, User]): Assignment`
 - **Pure and deterministic** — same week in, same result out, no database access
 - Assignments are never written to the database. Only *completions* are stored.
-- Member order is stable, from `households.member_order`, so rotation does not
-  scramble if a row's `created_at` changes
+- User order is stable, from `households.member_order` (an array of
+  `users.id` — the column name predates the `members` → `users` merge and
+  was kept as-is; it means "order of the household's people", not a
+  reference to the old `members` table, which no longer exists). Rotation
+  does not scramble if a row's `created_at` changes.
 
 Test past, current, and future weeks plus the year boundary — ISO weeks do not
 align with calendar years. Use `date-fns` (`getISOWeek`, `parseISO`), never a
@@ -170,14 +185,14 @@ Connection string in `DATABASE_URL`. The db client is a singleton in
 | Table | Notes |
 |---|---|
 | `households` | single row; holds `member_order` for stable rotation |
-| `members` | name, role, avatar_key |
+| `users` | email, password_hash, household_id, name, avatar_key, role — see Authentication |
 | `shopping_lists` | name |
 | `shopping_items` | list_id, name, quantity, unit, checked, source_recipe_id nullable |
 | `recipes` | name, servings, instructions |
 | `recipe_ingredients` | recipe_id, name, quantity, unit, position |
 | `chores` | name, rotation_group (`A`\|`B`\|`C`\|`D`) |
-| `chore_completions` | chore_id, member_id, iso_week, completed_at |
-| `reminders` | title, due_at, done_at nullable, member_ids (0-2, no FK — array column) |
+| `chore_completions` | chore_id, user_id, iso_week, completed_at |
+| `reminders` | title, due_at, done_at nullable, assignee_ids (0-2, no FK — array column) |
 
 Conventions:
 
@@ -193,6 +208,28 @@ Conventions:
 - Foreign keys always declare `onDelete` explicitly
 - Schema changes: edit `schema.ts`, run `db:generate`, review the SQL, then `db:migrate`
 
+## Authentication
+
+Real accounts — not the single shared household password from the VPN-only
+era. Mia and Sam are `users` rows. There is no separate "member" concept:
+one person entity only. The old `members` table is gone.
+
+`users` columns: `email`, `password_hash` (argon2id), `household_id`,
+`name`, `avatar_key`, `role`. `name` and `avatar_key` aren't new — they're
+carried over from the old `members` table, since the app still needs a
+display name and avatar everywhere (greeting, sidebar, chips). `role` is
+also carried over: a descriptive label ("Parent" / "Partenaire"), not a
+permission level — this app still has no authorization system, per "Scoped
+to one household" above.
+
+- Session cookie carries `user_id`, not just an `authenticated` boolean
+- Cookie flags: `Secure`, `HttpOnly`, `SameSite=Lax`
+- Passwords hashed with argon2id
+- Login action is rate-limited, per IP and per identifier (email)
+- Constant-time failure delay, and the same error message whether the
+  account doesn't exist or the password is wrong — never reveal which
+- Still out of scope: OAuth, password reset, public sign-up
+
 ## UI conventions
 
 - Tailwind utilities only — no CSS modules, no styled-components
@@ -206,6 +243,18 @@ Conventions:
 - Modals trap focus, close on Escape, and restore focus to the trigger
 - Adding a recipe to a list shows a confirmation of what happened (added vs merged),
   since a silent merge otherwise looks like nothing happened
+
+## PWA
+
+Installable to the home screen — worth having now that the app is reachable
+directly from a phone over the public internet, not just via VPN.
+
+- `public/manifest.webmanifest`: `display: "standalone"`, 192×192 and
+  512×512 icons
+- `apple-touch-icon` link tag in `root.tsx`
+- No service worker, no offline cache, for now. The architecture stays fully
+  SSR via loaders/actions — installability is the only goal here, not
+  offline support
 
 ## Commands
 
@@ -270,25 +319,45 @@ commit without asking each time, scoped to local commits only.
 
 ## Deployment
 
-Home server behind a VPN (Tailscale/WireGuard). No public exposure, no CDN, no
-edge runtime. Assume a low-power ARM64 host.
+A VPS, reverse-proxied by Caddy, reachable over the public internet. No more
+VPN, no more low-power-ARM64 assumption — that whole constraint is gone.
 
+- Docker + `compose.yml` (`node:24-alpine`, no armv7 constraint)
+- Caddy in front of the app: automatic Let's Encrypt HTTPS, HSTS
 - Build on a development machine, not on the server
-- Postgres runs in Docker alongside the app, both in `compose.yml`
-- Never bind Postgres to `0.0.0.0` — container network only
-- Back up with scheduled `pg_dump`; a volume snapshot is not a backup
-- Auth is a simple session cookie. No OAuth, no password reset flows
+- The app container binds `127.0.0.1:3000` only — Caddy is the only thing
+  that talks to it directly. Never `0.0.0.0`
+- Postgres stays on the Docker network only — no `ports:` mapping at all,
+  not even to `127.0.0.1`. **Flagged**: the `compose.yml` used for local dev
+  currently maps `127.0.0.1:5432` so `npm run dev` / `db:migrate` can reach
+  it from the host — that mapping is needed for local dev and must not
+  exist in whatever compose file actually ships to the VPS. Reconcile with
+  a separate prod compose file/override when the deployment work happens;
+  don't just delete the local mapping.
+- Back up with scheduled `pg_dump`, copied off the VPS — a volume snapshot
+  is not a backup, and neither is a backup that lives on the box it's
+  meant to protect against
+- `public/robots.txt`: `Disallow: /` for the whole site. Publicly reachable
+  is not the same as publicly listed
 
 ## Not in scope yet
 
 Do not build these unless explicitly asked:
 
 - Household edit / invite (buttons are deliberate placeholders)
-- Add/remove member flow
+- Add/remove user flow
 - Recipe creation and editing — the app reads recipes; seed them for now
 - Servings scaling of ingredient quantities
 - Store tags on shopping items
 - Notifications, push, or email
+- Multi-tenancy or third-party household sign-up
+- Row-Level Security
+- React Native or any native mobile app
+- NestJS or any separate API server (see Stack — loaders/actions are the
+  data layer)
+- Store distribution — TWA, Capacitor, or otherwise
+- Billing, advertising
+- OAuth, password reset (see Authentication)
 
 ## When unsure
 
