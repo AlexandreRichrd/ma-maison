@@ -22,6 +22,20 @@
       "when": 1786300496986,
       "tag": "0002_omniscient_puck",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1786381266371,
+      "tag": "0003_tan_onslaught",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1786381365333,
+      "tag": "0004_hard_spectrum",
+      "breakpoints": true
     }
   ]
 }

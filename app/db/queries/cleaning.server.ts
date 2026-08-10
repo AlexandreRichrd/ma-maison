@@ -1,10 +1,10 @@
 import { and, eq } from "drizzle-orm";
 
 import { db } from "~/db/index.server";
-import { choreCompletions, chores, type Member } from "~/db/schema";
-import { getWeekAssignment, type MemberAssignment } from "~/lib/rotation";
+import { choreCompletions, chores, type User } from "~/db/schema";
+import { getWeekAssignment, type UserAssignment } from "~/lib/rotation";
 
-import { getOrderedMembers } from "./household.server";
+import { getOrderedUsers } from "./household.server";
 
 export type ChoreView = {
   id: string;
@@ -13,30 +13,32 @@ export type ChoreView = {
   done: boolean;
 };
 
-export type MemberWeekChores = {
-  member: Member;
+export type UserWeekChores = {
+  user: User;
   chores: ChoreView[];
 };
 
 async function getAssignment(
   isoWeek: string,
-): Promise<{ members: [Member, Member]; assignment: [MemberAssignment, MemberAssignment] } | null> {
-  const orderedMembers = await getOrderedMembers();
-  if (orderedMembers.length < 2) return null;
-  const [first, second] = orderedMembers as [Member, Member];
+): Promise<{ users: [User, User]; assignment: [UserAssignment, UserAssignment] } | null> {
+  const orderedUsers = await getOrderedUsers();
+  if (orderedUsers.length < 2) return null;
+  const [first, second] = orderedUsers as [User, User];
   const assignment = getWeekAssignment(isoWeek, [
     { id: first.id },
     { id: second.id },
   ]);
-  return { members: [first, second], assignment };
+  return { users: [first, second], assignment };
 }
 
+/** Always in stable households.member_order order — see rotation.ts. Reorder for
+ * "signed-in user first" display in the caller, not here. */
 export async function getWeekChores(
   isoWeek: string,
-): Promise<MemberWeekChores[]> {
+): Promise<UserWeekChores[]> {
   const resolved = await getAssignment(isoWeek);
   if (!resolved) return [];
-  const { members: [first, second], assignment } = resolved;
+  const { users: [first, second], assignment } = resolved;
 
   const allChores = await db.select().from(chores);
   const completions = await db
@@ -48,19 +50,19 @@ export async function getWeekChores(
   const byGroup = (group: string) =>
     allChores.filter((chore) => chore.rotationGroup === group);
 
-  const buildForMember = (
-    memberAssignment: MemberAssignment,
-    member: Member,
-  ): MemberWeekChores => ({
-    member,
+  const buildForUser = (
+    userAssignment: UserAssignment,
+    user: User,
+  ): UserWeekChores => ({
+    user,
     chores: [
-      ...byGroup(memberAssignment.weeklyGroup).map((chore) => ({
+      ...byGroup(userAssignment.weeklyGroup).map((chore) => ({
         id: chore.id,
         name: chore.name,
         tag: "Chaque semaine" as const,
         done: completedChoreIds.has(chore.id),
       })),
-      ...byGroup(memberAssignment.biweeklyGroup).map((chore) => ({
+      ...byGroup(userAssignment.biweeklyGroup).map((chore) => ({
         id: chore.id,
         name: chore.name,
         tag: "Toutes les 2 semaines" as const,
@@ -70,8 +72,8 @@ export async function getWeekChores(
   });
 
   return [
-    buildForMember(assignment[0], first),
-    buildForMember(assignment[1], second),
+    buildForUser(assignment[0], first),
+    buildForUser(assignment[1], second),
   ];
 }
 
@@ -99,7 +101,7 @@ export async function toggleChoreCompletion(
   if (!chore) throw new Error("Chore not found");
 
   const resolved = await getAssignment(isoWeek);
-  if (!resolved) throw new Error("Household is missing members");
+  if (!resolved) throw new Error("Household is missing users");
   const assignee = resolved.assignment.find(
     (a) =>
       a.weeklyGroup === chore.rotationGroup ||
@@ -109,7 +111,7 @@ export async function toggleChoreCompletion(
 
   await db.insert(choreCompletions).values({
     choreId,
-    memberId: assignee.memberId,
+    userId: assignee.userId,
     isoWeek,
   });
 }

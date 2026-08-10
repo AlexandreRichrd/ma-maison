@@ -4,18 +4,19 @@ try {
   // no .env file — rely on real environment variables
 }
 
+import { hash } from "@node-rs/argon2";
 import { eq } from "drizzle-orm";
 
 import {
   choreCompletions,
   chores,
   households,
-  members,
   recipeIngredients,
   recipes,
   reminders,
   shoppingItems,
   shoppingLists,
+  users,
 } from "./schema";
 
 // Dynamic import, not static: index.server.ts reads process.env.DATABASE_URL
@@ -23,8 +24,12 @@ import {
 // loadEnvFile() call above — this keeps load order correct.
 const { db } = await import("./index.server");
 
+const DEV_PASSWORD = "devpassword";
+
 async function main() {
   // Re-runnable: clear everything first (household-scale dev data only).
+  // NEVER run this against a database with real accounts in it — it wipes
+  // the users table along with everything else.
   await db.delete(choreCompletions);
   await db.delete(chores);
   await db.delete(shoppingItems);
@@ -32,16 +37,32 @@ async function main() {
   await db.delete(recipeIngredients);
   await db.delete(recipes);
   await db.delete(reminders);
-  await db.delete(members);
+  await db.delete(users);
   await db.delete(households);
 
   const [household] = await db.insert(households).values({}).returning();
 
+  const passwordHash = await hash(DEV_PASSWORD);
+
   const [mia, sam] = await db
-    .insert(members)
+    .insert(users)
     .values([
-      { householdId: household.id, name: "Mia", role: "Parent", avatarKey: "mia" },
-      { householdId: household.id, name: "Sam", role: "Partenaire", avatarKey: "sam" },
+      {
+        householdId: household.id,
+        name: "Mia",
+        role: "Parent",
+        avatarKey: "mia",
+        email: "mia@example.com",
+        passwordHash,
+      },
+      {
+        householdId: household.id,
+        name: "Sam",
+        role: "Partenaire",
+        avatarKey: "sam",
+        email: "sam@example.com",
+        passwordHash,
+      },
     ])
     .returning();
 
@@ -132,7 +153,11 @@ async function main() {
     },
   ]);
 
-  console.log("Seeded:", { household: household.id, members: [mia.name, sam.name] });
+  console.log("Seeded:", {
+    household: household.id,
+    users: [mia.email, sam.email],
+    password: DEV_PASSWORD,
+  });
 }
 
 main()

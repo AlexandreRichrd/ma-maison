@@ -1,11 +1,5 @@
 import { expect, test } from "@playwright/test";
 
-import { login } from "./utils";
-
-test.beforeEach(async ({ page }) => {
-  await login(page);
-});
-
 test("completes a chore for the week", async ({ page }) => {
   await page.goto("/cleaning");
   await expect(page).toHaveURL(/\?week=\d{4}-W\d{2}/);

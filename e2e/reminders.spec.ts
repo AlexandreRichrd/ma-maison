@@ -1,11 +1,5 @@
 import { expect, test } from "@playwright/test";
 
-import { login } from "./utils";
-
-test.beforeEach(async ({ page }) => {
-  await login(page);
-});
-
 test("toggles a reminder done and back to undone", async ({ page }) => {
   await page.goto("/reminders");
 

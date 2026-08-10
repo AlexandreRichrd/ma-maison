@@ -1,14 +1,14 @@
-import type { Member } from "~/db/schema";
+import type { User } from "~/db/schema";
 
 import { HouseholdFooter } from "./HouseholdFooter";
 import { NavList } from "./NavList";
 
-export function Sidebar({ members }: { members: Member[] }) {
+export function Sidebar({ users }: { users: User[] }) {
   return (
     <aside className="hidden w-[232px] shrink-0 flex-col gap-7 border-r border-border bg-sidebar px-4 py-6 nav:flex">
       <div className="px-2 font-serif text-xl font-bold">Hearth</div>
       <NavList variant="sidebar" />
-      <HouseholdFooter members={members} />
+      <HouseholdFooter users={users} />
     </aside>
   );
 }

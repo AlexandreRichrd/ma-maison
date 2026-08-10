@@ -4,9 +4,9 @@ import { data, useFetcher } from "react-router";
 import { PageHeader } from "~/components/layout/PageHeader";
 import { ReminderRow } from "~/components/reminders/ReminderRow";
 import { Button, Checkbox, Input, Modal } from "~/components/ui";
+import { getOrderedUsers } from "~/db/queries/household.server";
 import { createReminder, getReminders, toggleReminder } from "~/db/queries/reminders.server";
-import { getOrderedMembers } from "~/db/queries/household.server";
-import { getCurrentMemberId } from "~/lib/auth.server";
+import { requireUser } from "~/lib/auth.server";
 import { addReminderSchema, toggleReminderSchema } from "~/lib/validation";
 
 import type { Route } from "./+types/reminders";
@@ -16,12 +16,9 @@ export function meta() {
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const [reminders, members, currentMemberId] = await Promise.all([
-    getReminders(),
-    getOrderedMembers(),
-    getCurrentMemberId(request),
-  ]);
-  return { reminders, members, currentMemberId };
+  const currentUser = await requireUser(request);
+  const [reminders, users] = await Promise.all([getReminders(), getOrderedUsers()]);
+  return { reminders, users, currentUserId: currentUser.id };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -55,7 +52,7 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function Reminders({ loaderData }: Route.ComponentProps) {
-  const { members, currentMemberId } = loaderData;
+  const { users, currentUserId } = loaderData;
   const [modalOpen, setModalOpen] = useState(false);
   const fetcher = useFetcher<typeof action>();
   const errors = fetcher.data && "errors" in fetcher.data ? fetcher.data.errors : undefined;
@@ -71,7 +68,7 @@ export default function Reminders({ loaderData }: Route.ComponentProps) {
       />
       <div className="flex max-w-[640px] flex-col gap-2.5">
         {loaderData.reminders.map((reminder) => (
-          <ReminderRow key={reminder.id} reminder={reminder} members={members} />
+          <ReminderRow key={reminder.id} reminder={reminder} users={users} />
         ))}
       </div>
 
@@ -98,14 +95,14 @@ export default function Reminders({ loaderData }: Route.ComponentProps) {
         <div>
           <div className="mb-1 text-sm font-semibold text-muted">Pour qui ?</div>
           <div className="flex flex-col">
-            {members.map((member) => (
+            {users.map((user) => (
               <Checkbox
-                key={member.id}
-                id={`assignee-${member.id}`}
+                key={user.id}
+                id={`assignee-${user.id}`}
                 name="assigneeIds"
-                value={member.id}
-                label={member.name}
-                defaultChecked={member.id === currentMemberId || currentMemberId == null}
+                value={user.id}
+                label={user.name}
+                defaultChecked={user.id === currentUserId}
               />
             ))}
           </div>

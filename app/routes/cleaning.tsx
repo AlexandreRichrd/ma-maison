@@ -3,6 +3,9 @@ import { data, redirect } from "react-router";
 import { ChoreColumn } from "~/components/cleaning/ChoreColumn";
 import { WeekNavigator } from "~/components/cleaning/WeekNavigator";
 import { getWeekChores, toggleChoreCompletion } from "~/db/queries/cleaning.server";
+import { requireUser } from "~/lib/auth.server";
+import { withCurrentUserFirst } from "~/lib/cleaning-order";
+import { avatarColorFor } from "~/lib/user-colors";
 import { toggleChoreSchema } from "~/lib/validation";
 import { formatWeekLabel, getCurrentIsoWeek, isValidIsoWeek } from "~/lib/week";
 
@@ -13,6 +16,7 @@ export function meta() {
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
+  const currentUser = await requireUser(request);
   const url = new URL(request.url);
   const weekParam = url.searchParams.get("week");
 
@@ -21,7 +25,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   }
 
   const weekChores = await getWeekChores(weekParam);
-  return { isoWeek: weekParam, weekChores };
+  return { isoWeek: weekParam, weekChores, currentUserId: currentUser.id };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -35,19 +39,27 @@ export async function action({ request }: Route.ActionArgs) {
 }
 
 export default function Cleaning({ loaderData }: Route.ComponentProps) {
-  const { isoWeek, weekChores } = loaderData;
+  const { isoWeek, weekChores, currentUserId } = loaderData;
+  // households.member_order — the stable anchor colors are resolved
+  // against, so they never flip depending on who's signed in, even
+  // though the columns themselves are reordered below.
+  const stableOrderUserIds = weekChores.map((entry) => entry.user.id);
+  const orderedWeekChores = withCurrentUserFirst(weekChores, currentUserId);
 
   return (
     <div>
       <h1 className="mb-1.5 font-serif text-2xl font-bold">Ménage</h1>
       <WeekNavigator isoWeek={isoWeek} label={formatWeekLabel(isoWeek)} />
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-        {weekChores.map((memberChores, index) => (
+        {orderedWeekChores.map((userChores) => (
           <ChoreColumn
-            key={memberChores.member.id}
-            memberChores={memberChores}
+            key={userChores.user.id}
+            userChores={userChores}
             isoWeek={isoWeek}
-            index={index}
+            avatarColorClassName={avatarColorFor(
+              stableOrderUserIds.map((id) => ({ id })),
+              userChores.user.id,
+            )}
           />
         ))}
       </div>

@@ -1,7 +1,7 @@
 import { data, Form, redirect } from "react-router";
 
 import { Button, Card, Input } from "~/components/ui";
-import { createUserSession, isAuthenticated, login } from "~/lib/auth.server";
+import { createUserSession, getSessionUserId, login } from "~/lib/auth.server";
 import { loginSchema } from "~/lib/validation";
 
 import type { Route } from "./+types/login";
@@ -11,7 +11,7 @@ export function meta() {
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
-  if (await isAuthenticated(request)) {
+  if (await getSessionUserId(request)) {
     throw redirect("/");
   }
   return null;
@@ -24,19 +24,27 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ errors: result.error.flatten().fieldErrors }, { status: 400 });
   }
 
-  const ok = await login(result.data.password);
-  if (!ok) {
+  const user = await login(request, result.data.email, result.data.password);
+  if (!user) {
+    // Deliberately not attached to either field, and the same message
+    // whether the account doesn't exist, the password is wrong, or the
+    // attempt was rate-limited — never reveal which.
     return data(
-      { errors: { password: ["Mot de passe incorrect"] } },
+      { errors: { general: ["Email ou mot de passe incorrect"] } },
       { status: 400 },
     );
   }
 
-  return createUserSession(request, "/");
+  return createUserSession(request, user.id, "/");
 }
 
 export default function Login({ actionData }: Route.ComponentProps) {
   const errors = actionData && "errors" in actionData ? actionData.errors : undefined;
+  const generalError =
+    errors && "general" in errors ? errors.general?.[0] : undefined;
+  const emailError = errors && "email" in errors ? errors.email?.[0] : undefined;
+  const passwordError =
+    errors && "password" in errors ? errors.password?.[0] : undefined;
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-surface px-4">
@@ -44,15 +52,33 @@ export default function Login({ actionData }: Route.ComponentProps) {
         <div className="mb-5 font-serif text-xl font-bold">Hearth</div>
         <Form method="post" className="flex flex-col gap-3">
           <Input
-            label="Mot de passe du foyer"
-            name="password"
-            type="password"
+            label="Email"
+            name="email"
+            type="email"
+            autoComplete="email"
             autoFocus
             required
           />
-          {errors?.password && (
+          {emailError && (
             <p className="text-sm font-medium text-accent" role="alert">
-              {errors.password[0]}
+              {emailError}
+            </p>
+          )}
+          <Input
+            label="Mot de passe"
+            name="password"
+            type="password"
+            autoComplete="current-password"
+            required
+          />
+          {passwordError && (
+            <p className="text-sm font-medium text-accent" role="alert">
+              {passwordError}
+            </p>
+          )}
+          {generalError && (
+            <p className="text-sm font-medium text-accent" role="alert">
+              {generalError}
             </p>
           )}
           <Button type="submit" className="mt-2">

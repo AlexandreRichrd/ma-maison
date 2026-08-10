@@ -26,11 +26,13 @@ export const households = pgTable("households", {
   ...timestamps,
 });
 
-export const members = pgTable("members", {
+export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
   householdId: uuid("household_id")
     .notNull()
     .references(() => households.id, { onDelete: "cascade" }),
+  email: text("email").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
   name: text("name").notNull(),
   role: text("role").notNull(),
   avatarKey: text("avatar_key").notNull(),
@@ -99,9 +101,9 @@ export const choreCompletions = pgTable(
     choreId: uuid("chore_id")
       .notNull()
       .references(() => chores.id, { onDelete: "cascade" }),
-    memberId: uuid("member_id")
+    userId: uuid("user_id")
       .notNull()
-      .references(() => members.id, { onDelete: "cascade" }),
+      .references(() => users.id, { onDelete: "cascade" }),
     isoWeek: text("iso_week").notNull(),
     completedAt: timestamp("completed_at", { withTimezone: true })
       .notNull()
@@ -115,22 +117,22 @@ export const reminders = pgTable("reminders", {
   title: text("title").notNull(),
   dueAt: timestamp("due_at", { withTimezone: true }).notNull(),
   doneAt: timestamp("done_at", { withTimezone: true }),
-  // Can name either or both members — a household-of-two array, same
+  // Can name either or both users — a household-of-two array, same
   // pattern as households.member_order. No FK: an array column can't
-  // declare one, so a removed member just leaves a dangling id here
+  // declare one, so a removed user just leaves a dangling id here
   // (harmless — chip lookups fall through to "no chip" for an id that
-  // no longer resolves to a member).
+  // no longer resolves to a user).
   assigneeIds: uuid("assignee_ids").array().notNull().default([]),
   ...timestamps,
 });
 
 export const householdsRelations = relations(households, ({ many }) => ({
-  members: many(members),
+  users: many(users),
 }));
 
-export const membersRelations = relations(members, ({ one, many }) => ({
+export const usersRelations = relations(users, ({ one, many }) => ({
   household: one(households, {
-    fields: [members.householdId],
+    fields: [users.householdId],
     references: [households.id],
   }),
   choreCompletions: many(choreCompletions),
@@ -176,15 +178,15 @@ export const choreCompletionsRelations = relations(
       fields: [choreCompletions.choreId],
       references: [chores.id],
     }),
-    member: one(members, {
-      fields: [choreCompletions.memberId],
-      references: [members.id],
+    user: one(users, {
+      fields: [choreCompletions.userId],
+      references: [users.id],
     }),
   }),
 );
 
 export type Household = typeof households.$inferSelect;
-export type Member = typeof members.$inferSelect;
+export type User = typeof users.$inferSelect;
 export type ShoppingList = typeof shoppingLists.$inferSelect;
 export type ShoppingItem = typeof shoppingItems.$inferSelect;
 export type Recipe = typeof recipes.$inferSelect;

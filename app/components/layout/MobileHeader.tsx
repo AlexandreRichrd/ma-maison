@@ -1,15 +1,15 @@
 import { useLocation } from "react-router";
 
-import type { Member } from "~/db/schema";
+import type { User } from "~/db/schema";
 
 import { sectionTitleForPath } from "./nav-items";
 
 export function MobileHeader({
-  currentMember,
+  currentUser,
   avatarColorClassName,
   onOpenNav,
 }: {
-  currentMember: Member | undefined;
+  currentUser: User | undefined;
   avatarColorClassName: string | undefined;
   onOpenNav: () => void;
 }) {
@@ -28,11 +28,11 @@ export function MobileHeader({
         <span className="h-0.5 w-4.5 bg-foreground/80" />
       </button>
       <div className="flex-1 font-serif text-lg font-bold">{sectionTitleForPath(pathname)}</div>
-      {currentMember && (
+      {currentUser && (
         <div
           className={`flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-accent-foreground ${avatarColorClassName}`}
         >
-          {currentMember.name.charAt(0)}
+          {currentUser.name.charAt(0)}
         </div>
       )}
     </div>

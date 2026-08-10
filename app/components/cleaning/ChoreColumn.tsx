@@ -1,14 +1,13 @@
 import { useFetcher } from "react-router";
 
 import { Card } from "~/components/ui";
-import type { MemberWeekChores } from "~/db/queries/cleaning.server";
-import { AVATAR_COLORS } from "~/lib/member-colors";
+import type { UserWeekChores } from "~/db/queries/cleaning.server";
 
 function ChoreRow({
   chore,
   isoWeek,
 }: {
-  chore: MemberWeekChores["chores"][number];
+  chore: UserWeekChores["chores"][number];
   isoWeek: string;
 }) {
   const fetcher = useFetcher();
@@ -36,26 +35,30 @@ function ChoreRow({
 }
 
 export function ChoreColumn({
-  memberChores,
+  userChores,
   isoWeek,
-  index,
+  avatarColorClassName,
 }: {
-  memberChores: MemberWeekChores;
+  userChores: UserWeekChores;
   isoWeek: string;
-  index: number;
+  // Resolved by the caller from the user's *stable* household position
+  // (see lib/user-colors.ts), never from display order — this column may
+  // be shown reordered ("signed-in user first"), and the color must not
+  // flip depending on who's looking.
+  avatarColorClassName: string | undefined;
 }) {
   return (
     <Card>
       <div className="mb-3.5 flex items-center gap-2.5">
         <div
-          className={`flex size-7 shrink-0 items-center justify-center rounded-full text-[13px] font-semibold text-accent-foreground ${AVATAR_COLORS[index % AVATAR_COLORS.length]}`}
+          className={`flex size-7 shrink-0 items-center justify-center rounded-full text-[13px] font-semibold text-accent-foreground ${avatarColorClassName}`}
         >
-          {memberChores.member.name.charAt(0)}
+          {userChores.user.name.charAt(0)}
         </div>
-        <span className="font-serif text-base font-semibold">{memberChores.member.name}</span>
+        <span className="font-serif text-base font-semibold">{userChores.user.name}</span>
       </div>
       <div className="flex flex-col gap-2">
-        {memberChores.chores.map((chore) => (
+        {userChores.chores.map((chore) => (
           <ChoreRow key={chore.id} chore={chore} isoWeek={isoWeek} />
         ))}
       </div>

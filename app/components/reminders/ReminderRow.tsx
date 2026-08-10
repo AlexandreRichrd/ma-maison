@@ -1,16 +1,16 @@
 import { useFetcher } from "react-router";
 
 import { Button, Card } from "~/components/ui";
-import type { Member, Reminder } from "~/db/schema";
+import type { Reminder, User } from "~/db/schema";
 
 import { AssigneeChips } from "./AssigneeChips";
 
 export function ReminderRow({
   reminder,
-  members,
+  users,
 }: {
   reminder: Reminder;
-  members: Member[];
+  users: User[];
 }) {
   const fetcher = useFetcher();
   const done = fetcher.state !== "idle" ? !reminder.doneAt : reminder.doneAt != null;
@@ -25,7 +25,7 @@ export function ReminderRow({
           {reminder.title}
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-2">
-          <AssigneeChips assigneeIds={reminder.assigneeIds} members={members} />
+          <AssigneeChips assigneeIds={reminder.assigneeIds} users={users} />
           <span className="text-sm font-medium text-muted">
             {new Intl.DateTimeFormat("fr-FR", {
               weekday: "short",

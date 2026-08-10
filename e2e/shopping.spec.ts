@@ -1,11 +1,5 @@
 import { expect, test } from "@playwright/test";
 
-import { login } from "./utils";
-
-test.beforeEach(async ({ page }) => {
-  await login(page);
-});
-
 test("checking a shopping item toggles it without navigating", async ({ page }) => {
   await page.goto("/shopping");
   await page.getByRole("link", { name: "Courses de la semaine" }).click();

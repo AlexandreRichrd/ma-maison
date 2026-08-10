@@ -1,22 +1,22 @@
-import type { Member } from "~/db/schema";
-import { avatarColorFor } from "~/lib/member-colors";
+import type { User } from "~/db/schema";
+import { avatarColorFor } from "~/lib/user-colors";
 
 export function AssigneeChips({
   assigneeIds,
-  members,
+  users,
 }: {
   assigneeIds: string[];
-  members: Member[];
+  users: User[];
 }) {
   return (
     <>
-      {assigneeIds.map((memberId) => {
-        const assignee = members.find((member) => member.id === memberId);
+      {assigneeIds.map((userId) => {
+        const assignee = users.find((user) => user.id === userId);
         if (!assignee) return null;
         return (
           <span
-            key={memberId}
-            className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold text-accent-foreground ${avatarColorFor(members, memberId)}`}
+            key={userId}
+            className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold text-accent-foreground ${avatarColorFor(users, userId)}`}
           >
             {assignee.name}
           </span>

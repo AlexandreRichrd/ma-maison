@@ -1,6 +1,10 @@
-import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
-
+import { verify } from "@node-rs/argon2";
 import { createCookieSessionStorage, redirect } from "react-router";
+
+import { getUserByEmail, getUserById } from "~/db/queries/users.server";
+import type { User } from "~/db/schema";
+
+import { isRateLimited, recordAttempt } from "./rate-limit.server";
 
 if (!process.env.SESSION_SECRET) {
   throw new Error("SESSION_SECRET is not set");
@@ -17,79 +21,89 @@ const sessionStorage = createCookieSessionStorage({
   },
 });
 
-/** `salt:hash` hex pair, as produced by `hashPassword`. */
-function verifyPassword(password: string): boolean {
-  const stored = process.env.AUTH_PASSWORD_HASH;
-  if (!stored) {
-    throw new Error("AUTH_PASSWORD_HASH is not set");
-  }
-  const [salt, hash] = stored.split(":");
-  if (!salt || !hash) {
-    throw new Error("AUTH_PASSWORD_HASH is malformed, expected salt:hash");
-  }
-  const hashBuffer = Buffer.from(hash, "hex");
-  const candidate = scryptSync(password, salt, hashBuffer.length);
-  return (
-    candidate.length === hashBuffer.length &&
-    timingSafeEqual(candidate, hashBuffer)
-  );
+// A real argon2id hash of a password nobody uses. Verifying against this
+// when the email isn't found keeps the "no such account" path doing the
+// same work (and taking about the same time) as the "wrong password"
+// path, instead of returning early and leaking account existence via
+// timing.
+const DUMMY_HASH =
+  "$argon2id$v=19$m=19456,t=2,p=1$ioSxuYJZObNpknjkAXiaHA$fuvU0zVW56c/NCnBLgVmn9fWMYuuXF0OEDROsvjkJV4";
+
+const MIN_LOGIN_MS = 300;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/** Used to generate AUTH_PASSWORD_HASH for .env — not called at runtime. */
-export function hashPassword(password: string): string {
-  const salt = randomBytes(16).toString("hex");
-  const hash = scryptSync(password, salt, 64).toString("hex");
-  return `${salt}:${hash}`;
+function clientKey(request: Request): string {
+  return request.headers.get("x-forwarded-for") ?? "unknown";
 }
 
-export async function login(password: string): Promise<boolean> {
-  return verifyPassword(password);
+/**
+ * Verifies email + password. Rate-limited per IP and per identifier, with
+ * a floor on how fast it can return — so both "no such account" and
+ * "wrong password" look the same from outside: same generic result,
+ * same rough timing. Callers must show one generic error message
+ * regardless of which of these caused the null.
+ */
+export async function login(
+  request: Request,
+  email: string,
+  password: string,
+): Promise<User | null> {
+  const started = Date.now();
+  const normalizedEmail = email.trim().toLowerCase();
+  const ipKey = `ip:${clientKey(request)}`;
+  const identifierKey = `email:${normalizedEmail}`;
+
+  if (isRateLimited(ipKey) || isRateLimited(identifierKey)) {
+    await sleep(Math.max(0, MIN_LOGIN_MS - (Date.now() - started)));
+    return null;
+  }
+  recordAttempt(ipKey);
+  recordAttempt(identifierKey);
+
+  const user = await getUserByEmail(normalizedEmail);
+  const ok = await verify(user?.passwordHash ?? DUMMY_HASH, password);
+
+  await sleep(Math.max(0, MIN_LOGIN_MS - (Date.now() - started)));
+
+  return ok && user ? user : null;
 }
 
 export async function createUserSession(
   request: Request,
+  userId: string,
   redirectTo: string,
 ): Promise<Response> {
   const session = await sessionStorage.getSession(
     request.headers.get("Cookie"),
   );
-  session.set("authenticated", true);
+  session.set("userId", userId);
   return redirect(redirectTo, {
     headers: { "Set-Cookie": await sessionStorage.commitSession(session) },
   });
 }
 
-export async function isAuthenticated(request: Request): Promise<boolean> {
+export async function getSessionUserId(request: Request): Promise<string | null> {
   const session = await sessionStorage.getSession(
     request.headers.get("Cookie"),
   );
-  return session.get("authenticated") === true;
-}
-
-export async function requireSession(request: Request): Promise<void> {
-  if (!(await isAuthenticated(request))) {
-    throw redirect("/login");
-  }
-}
-
-/** Which household member the dashboard greeting etc. currently addresses. */
-export async function getCurrentMemberId(request: Request): Promise<string | null> {
-  const session = await sessionStorage.getSession(
-    request.headers.get("Cookie"),
-  );
-  const id = session.get("currentMemberId");
+  const id = session.get("userId");
   return typeof id === "string" ? id : null;
 }
 
-export async function setCurrentMemberId(
-  request: Request,
-  memberId: string,
-): Promise<string> {
-  const session = await sessionStorage.getSession(
-    request.headers.get("Cookie"),
-  );
-  session.set("currentMemberId", memberId);
-  return sessionStorage.commitSession(session);
+/** Redirects to /login if there's no session, or the session's user no longer exists. */
+export async function requireUser(request: Request): Promise<User> {
+  const userId = await getSessionUserId(request);
+  if (!userId) {
+    throw redirect("/login");
+  }
+  const user = await getUserById(userId);
+  if (!user) {
+    throw redirect("/login");
+  }
+  return user;
 }
 
 export async function destroySession(request: Request): Promise<Response> {

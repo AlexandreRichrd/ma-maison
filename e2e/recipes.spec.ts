@@ -1,11 +1,5 @@
 import { expect, test } from "@playwright/test";
 
-import { login } from "./utils";
-
-test.beforeEach(async ({ page }) => {
-  await login(page);
-});
-
 test("adds a recipe's ingredients to an existing list", async ({ page }) => {
   await page.goto("/recipes");
   await page.getByRole("link", { name: /Spaghetti à la bolognaise/ }).click();

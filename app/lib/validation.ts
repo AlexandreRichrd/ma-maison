@@ -3,6 +3,7 @@ import { z } from "zod";
 import { isValidIsoWeek } from "./week";
 
 export const loginSchema = z.object({
+  email: z.email("Adresse email invalide").trim(),
   password: z.string().min(1, "Le mot de passe est requis"),
 });
 
@@ -45,10 +46,6 @@ export const toggleChoreSchema = z.object({
 export const toggleReminderSchema = z.object({
   intent: z.literal("toggleReminder"),
   reminderId: z.uuid(),
-});
-
-export const switchMemberSchema = z.object({
-  memberId: z.uuid(),
 });
 
 export const addReminderSchema = z.object({

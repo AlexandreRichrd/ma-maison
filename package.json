@@ -18,6 +18,7 @@
     "db:seed": "tsx app/db/seed.ts"
   },
   "dependencies": {
+    "@node-rs/argon2": "^2.0.2",
     "@react-router/node": "^8",
     "@react-router/serve": "^8",
     "date-fns": "^4.4.0",

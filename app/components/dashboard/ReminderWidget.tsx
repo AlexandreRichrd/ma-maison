@@ -2,14 +2,14 @@ import { Link } from "react-router";
 
 import { AssigneeChips } from "~/components/reminders/AssigneeChips";
 import { Card } from "~/components/ui";
-import type { Member, Reminder } from "~/db/schema";
+import type { Reminder, User } from "~/db/schema";
 
 export function ReminderWidget({
   reminders,
-  members,
+  users,
 }: {
   reminders: Reminder[];
-  members: Member[];
+  users: User[];
 }) {
   return (
     <Card className="sm:col-span-2">
@@ -30,7 +30,7 @@ export function ReminderWidget({
             >
               <span className="size-2 shrink-0 rounded-full bg-accent" />
               <span className="flex-1 text-sm font-medium">{reminder.title}</span>
-              <AssigneeChips assigneeIds={reminder.assigneeIds} members={members} />
+              <AssigneeChips assigneeIds={reminder.assigneeIds} users={users} />
               <span className="text-sm font-medium text-muted">
                 {new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-digit" }).format(
                   reminder.dueAt,
