@@ -8,11 +8,10 @@ services:
       POSTGRES_DB: home_manager
     volumes:
       - postgres-data:/var/lib/postgresql/data
-    # Loopback-only: reachable from the host (for local `npm run dev` /
-    # `npm run db:migrate`) but never bound to 0.0.0.0. The app container
-    # below reaches it over the internal compose network instead.
-    ports:
-      - "127.0.0.1:5432:5432"
+    # No ports here on purpose — never bound to 0.0.0.0, and not even to
+    # 127.0.0.1 by default now that this ships to a public-internet VPS.
+    # Local dev adds a loopback mapping back via compose.override.yml
+    # (auto-loaded by plain `docker compose` commands, no flags needed).
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U home_manager"]
       interval: 5s
@@ -28,11 +27,10 @@ services:
     environment:
       DATABASE_URL: postgres://home_manager:home_manager@postgres:5432/home_manager
       SESSION_SECRET: ${SESSION_SECRET}
-      AUTH_PASSWORD_HASH: ${AUTH_PASSWORD_HASH}
-    # Bind to loopback (or your Tailscale/WireGuard interface address) —
-    # never 0.0.0.0. This app is never exposed to the public internet.
-    ports:
-      - "127.0.0.1:3000:3000"
+      NODE_ENV: production
+    # No ports here either — compose.prod.yml adds the loopback-only
+    # 127.0.0.1:3000 mapping Caddy proxies to. Local dev normally runs
+    # the app on the host via `npm run dev`, not this container.
 
 volumes:
   postgres-data:

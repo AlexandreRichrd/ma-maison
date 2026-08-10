@@ -9,3 +9,8 @@
 # Playwright
 /test-results/
 /playwright-report/
+/e2e/.auth/
+
+# Local pg_dump output — scripts/backup.sh copies these offsite, they
+# shouldn't also end up in git
+/backups/

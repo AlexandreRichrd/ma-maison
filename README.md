@@ -1,9 +1,9 @@
 # Hearth — Home Manager
 
-A self-hosted intranet for a two-person household. One React Router app
+A self-hosted app for a two-person household. One React Router app
 (server-rendered, loaders/actions as the data layer) backed by PostgreSQL,
-meant to run on a home server reachable only over VPN — never exposed to the
-public internet.
+running on a VPS behind Caddy over HTTPS — reachable from the public
+internet, but not indexed or advertised, and there's no public sign-up.
 
 ## Sections
 
@@ -20,7 +20,8 @@ public internet.
   people. Assignment is computed on the fly, never stored — only completions
   are.
 - **Reminders** — a flat list with a reversible done/undo toggle.
-- **Household** — member list. Edit/Invite are deliberate static placeholders.
+- **Household** — user list with role. Edit/Invite are deliberate static
+  placeholders.
 
 See [`CLAUDE.md`](./CLAUDE.md) for the full architectural spec (data model,
 route layout, conventions) this app follows.
@@ -36,17 +37,20 @@ Requires Node 22.22+ (`nvm use`, see `.nvmrc`) and Docker.
 
 ```bash
 cp .env.example .env
-# fill in SESSION_SECRET and AUTH_PASSWORD_HASH — instructions are in the file
+# fill in SESSION_SECRET — instructions are in the file
 
 npm install
-docker compose up -d postgres
+docker compose up -d postgres   # compose.override.yml auto-adds the local port mapping
 npm run db:migrate
 npm run db:seed
 npm run dev
 ```
 
-The app runs at `http://localhost:5173`. Sign in with the password you set
-in `AUTH_PASSWORD_HASH`.
+The app runs at `http://localhost:5173`. `npm run db:seed` creates two
+fixture accounts — `mia@example.com` / `sam@example.com`, both with password
+`devpassword`. Real accounts are just rows in the `users` table (see
+`CLAUDE.md`'s Authentication section) — there's no shared password or
+sign-up flow.
 
 ## Commands
 
@@ -65,14 +69,28 @@ npm run db:seed            # reset and seed sample data
 
 ## Deployment
 
-Postgres and the app both run in Docker via `compose.yml`, on a home server
-behind Tailscale/WireGuard. Postgres is never bound to `0.0.0.0` — only the
-compose network and, for local dev, `127.0.0.1`. Build on a development
-machine and ship the image; back up with scheduled `pg_dump`, not just a
-volume snapshot.
+A VPS, reverse-proxied by Caddy (automatic Let's Encrypt HTTPS, HSTS — see
+`Caddyfile`). Postgres and the app run in Docker; Postgres is never bound to
+`0.0.0.0` and, on the VPS, not even to `127.0.0.1` — only the compose
+network. Build on a development machine and ship the image.
 
-Auth is a single shared household password behind a signed session cookie —
-no OAuth, no per-user accounts, no password reset flow. Generate
-`AUTH_PASSWORD_HASH` and `SESSION_SECRET` following the instructions in
-`.env.example` and set them as real environment variables on the host
-(not committed, not baked into the image).
+```bash
+# On the VPS, not locally:
+docker compose -f compose.yml -f compose.prod.yml up -d
+```
+
+`compose.override.yml` (Postgres's local-dev port mapping) is picked up
+automatically by plain `docker compose` and must **not** be present on the
+VPS — only `compose.yml` + `compose.prod.yml` there, invoked explicitly as
+above.
+
+Set `SESSION_SECRET` and `DOMAIN` as real environment variables on the host
+(not committed, not baked into the image) — see `.env.example`. Back up with
+`scripts/backup.sh` on a cron schedule; it dumps Postgres and copies the
+dump off the VPS via rclone — a local file or volume snapshot is not a
+backup on its own. `rclone config` and `BACKUP_REMOTE` need setting up
+first, or the script fails loudly rather than pretending it protected
+anything.
+
+`public/robots.txt` disallows the whole site — publicly reachable isn't the
+same as publicly listed.

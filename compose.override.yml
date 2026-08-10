@@ -1,0 +1,11 @@
+# Auto-loaded by plain `docker compose` commands alongside compose.yml —
+# local development only. Never applied on the VPS (there, only
+# compose.yml + compose.prod.yml are used explicitly — see compose.prod.yml).
+#
+# Adds back the host-loopback access this repo's local workflow already
+# relies on: `npm run dev` / `npm run db:migrate` / `npm run db:seed` run on
+# the host and need to reach Postgres directly.
+services:
+  postgres:
+    ports:
+      - "127.0.0.1:5432:5432"
