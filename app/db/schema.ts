@@ -115,9 +115,12 @@ export const reminders = pgTable("reminders", {
   title: text("title").notNull(),
   dueAt: timestamp("due_at", { withTimezone: true }).notNull(),
   doneAt: timestamp("done_at", { withTimezone: true }),
-  memberId: uuid("member_id").references(() => members.id, {
-    onDelete: "set null",
-  }),
+  // Can name either or both members — a household-of-two array, same
+  // pattern as households.member_order. No FK: an array column can't
+  // declare one, so a removed member just leaves a dangling id here
+  // (harmless — chip lookups fall through to "no chip" for an id that
+  // no longer resolves to a member).
+  assigneeIds: uuid("assignee_ids").array().notNull().default([]),
   ...timestamps,
 });
 
@@ -131,7 +134,6 @@ export const membersRelations = relations(members, ({ one, many }) => ({
     references: [households.id],
   }),
   choreCompletions: many(choreCompletions),
-  reminders: many(reminders),
 }));
 
 export const shoppingListsRelations = relations(shoppingLists, ({ many }) => ({
@@ -180,13 +182,6 @@ export const choreCompletionsRelations = relations(
     }),
   }),
 );
-
-export const remindersRelations = relations(reminders, ({ one }) => ({
-  member: one(members, {
-    fields: [reminders.memberId],
-    references: [members.id],
-  }),
-}));
 
 export type Household = typeof households.$inferSelect;
 export type Member = typeof members.$inferSelect;

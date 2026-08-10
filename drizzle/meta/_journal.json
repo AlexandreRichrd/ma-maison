@@ -15,6 +15,13 @@
       "when": 1786293878584,
       "tag": "0001_daffy_wendigo",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1786300496986,
+      "tag": "0002_omniscient_puck",
+      "breakpoints": true
     }
   ]
 }

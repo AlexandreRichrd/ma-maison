@@ -3,7 +3,7 @@ import { data, useFetcher } from "react-router";
 
 import { PageHeader } from "~/components/layout/PageHeader";
 import { ReminderRow } from "~/components/reminders/ReminderRow";
-import { Button, Input, Modal, Select } from "~/components/ui";
+import { Button, Checkbox, Input, Modal } from "~/components/ui";
 import { createReminder, getReminders, toggleReminder } from "~/db/queries/reminders.server";
 import { getOrderedMembers } from "~/db/queries/household.server";
 import { getCurrentMemberId } from "~/lib/auth.server";
@@ -29,14 +29,19 @@ export async function action({ request }: Route.ActionArgs) {
   const intent = formData.get("intent");
 
   if (intent === "addReminder") {
-    const result = addReminderSchema.safeParse(Object.fromEntries(formData));
+    const result = addReminderSchema.safeParse({
+      intent,
+      title: formData.get("title"),
+      dueAt: formData.get("dueAt"),
+      assigneeIds: formData.getAll("assigneeIds"),
+    });
     if (!result.success) {
       return data({ errors: result.error.flatten().fieldErrors }, { status: 400 });
     }
     await createReminder({
       title: result.data.title,
       dueAt: new Date(result.data.dueAt),
-      memberId: result.data.memberId,
+      assigneeIds: result.data.assigneeIds,
     });
     return { ok: true };
   }
@@ -56,6 +61,7 @@ export default function Reminders({ loaderData }: Route.ComponentProps) {
   const errors = fetcher.data && "errors" in fetcher.data ? fetcher.data.errors : undefined;
   const titleErrors = errors && "title" in errors ? errors.title : undefined;
   const dueAtErrors = errors && "dueAt" in errors ? errors.dueAt : undefined;
+  const assigneeErrors = errors && "assigneeIds" in errors ? errors.assigneeIds : undefined;
 
   return (
     <div>
@@ -89,13 +95,26 @@ export default function Reminders({ loaderData }: Route.ComponentProps) {
             {dueAtErrors[0]}
           </p>
         )}
-        <Select label="Pour qui ?" name="memberId" defaultValue={currentMemberId ?? members[0]?.id} required>
-          {members.map((member) => (
-            <option key={member.id} value={member.id}>
-              {member.name}
-            </option>
-          ))}
-        </Select>
+        <div>
+          <div className="mb-1 text-sm font-semibold text-muted">Pour qui ?</div>
+          <div className="flex flex-col">
+            {members.map((member) => (
+              <Checkbox
+                key={member.id}
+                id={`assignee-${member.id}`}
+                name="assigneeIds"
+                value={member.id}
+                label={member.name}
+                defaultChecked={member.id === currentMemberId || currentMemberId == null}
+              />
+            ))}
+          </div>
+          {assigneeErrors && (
+            <p className="text-sm font-medium text-accent" role="alert">
+              {assigneeErrors[0]}
+            </p>
+          )}
+        </div>
       </Modal>
     </div>
   );

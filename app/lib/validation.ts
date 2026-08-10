@@ -58,5 +58,5 @@ export const addReminderSchema = z.object({
     .string()
     .min(1, "La date est requise")
     .refine((value) => !Number.isNaN(new Date(value).getTime()), "Date invalide"),
-  memberId: z.uuid("La personne est requise"),
+  assigneeIds: z.array(z.uuid()).min(1, "Choisissez au moins une personne"),
 });

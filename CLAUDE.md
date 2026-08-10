@@ -74,9 +74,9 @@ Name normalisation (trim, lowercase, collapse whitespace) lives in
 ### Reminders
 Flat list with time and a done/undo toggle. Reversible; there is no
 delete-on-complete. `+ Add reminder` opens the shared Modal (title,
-due date/time, and an assignee); no edit or delete yet. A reminder's
-assignee shows as a chip colored the same as that member's avatar
-elsewhere in the UI.
+due date/time, and assignee checkboxes — either or both members); no
+edit or delete yet. Each assignee shows as a chip colored the same as
+that member's avatar elsewhere in the UI.
 
 ### Household
 Member list with role. Edit and invite buttons are **static placeholders** —
@@ -177,7 +177,7 @@ Connection string in `DATABASE_URL`. The db client is a singleton in
 | `recipe_ingredients` | recipe_id, name, quantity, unit, position |
 | `chores` | name, rotation_group (`A`\|`B`\|`C`\|`D`) |
 | `chore_completions` | chore_id, member_id, iso_week, completed_at |
-| `reminders` | title, due_at, done_at nullable, member_id nullable |
+| `reminders` | title, due_at, done_at nullable, member_ids (0-2, no FK — array column) |
 
 Conventions:
 
