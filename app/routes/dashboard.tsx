@@ -1,4 +1,5 @@
 import { CleaningWidget } from "~/components/dashboard/CleaningWidget";
+import { HomeClimateWidget } from "~/components/dashboard/HomeClimateWidget";
 import { ReminderWidget } from "~/components/dashboard/ReminderWidget";
 import { ShoppingWidget } from "~/components/dashboard/ShoppingWidget";
 import { getDashboardData } from "~/db/queries/dashboard.server";
@@ -42,6 +43,7 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
       </p>
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+        <HomeClimateWidget />
         <ReminderWidget reminders={dueReminders} users={users} />
         <ShoppingWidget lists={shoppingLists} />
         <CleaningWidget

@@ -23,6 +23,14 @@
   --color-success: oklch(58% 0.09 145);
   --color-avatar-1: oklch(58% 0.12 38);
   --color-avatar-2: oklch(58% 0.1 250);
+
+  --color-climate-outside-bg: oklch(96% 0.015 220);
+  --color-climate-outside-icon: oklch(80% 0.08 220);
+  --color-climate-outside-text: oklch(45% 0.02 220);
+  --color-climate-inside-bg: oklch(96% 0.02 140);
+  --color-climate-inside-icon: oklch(78% 0.1 140);
+  --color-climate-inside-text: oklch(42% 0.03 140);
+  --color-climate-inside-text-muted: oklch(45% 0.02 140);
 }
 
 html,
