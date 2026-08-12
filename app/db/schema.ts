@@ -36,6 +36,34 @@ export const users = pgTable("users", {
   name: text("name").notNull(),
   role: text("role").notNull(),
   avatarKey: text("avatar_key").notNull(),
+  // Null until the /activate link is clicked. Login is refused until then.
+  emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),
+  ...timestamps,
+});
+
+export const invites = pgTable("invites", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  householdId: uuid("household_id")
+    .notNull()
+    .references(() => households.id, { onDelete: "cascade" }),
+  invitedByUserId: uuid("invited_by_user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  email: text("email").notNull(),
+  token: text("token").notNull().unique(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+  ...timestamps,
+});
+
+export const emailVerifications = pgTable("email_verifications", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  token: text("token").notNull().unique(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  consumedAt: timestamp("consumed_at", { withTimezone: true }),
   ...timestamps,
 });
 
@@ -136,7 +164,30 @@ export const usersRelations = relations(users, ({ one, many }) => ({
     references: [households.id],
   }),
   choreCompletions: many(choreCompletions),
+  sentInvites: many(invites),
+  emailVerifications: many(emailVerifications),
 }));
+
+export const invitesRelations = relations(invites, ({ one }) => ({
+  household: one(households, {
+    fields: [invites.householdId],
+    references: [households.id],
+  }),
+  invitedBy: one(users, {
+    fields: [invites.invitedByUserId],
+    references: [users.id],
+  }),
+}));
+
+export const emailVerificationsRelations = relations(
+  emailVerifications,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [emailVerifications.userId],
+      references: [users.id],
+    }),
+  }),
+);
 
 export const shoppingListsRelations = relations(shoppingLists, ({ many }) => ({
   items: many(shoppingItems),
@@ -194,3 +245,5 @@ export type RecipeIngredient = typeof recipeIngredients.$inferSelect;
 export type Chore = typeof chores.$inferSelect;
 export type ChoreCompletion = typeof choreCompletions.$inferSelect;
 export type Reminder = typeof reminders.$inferSelect;
+export type Invite = typeof invites.$inferSelect;
+export type EmailVerification = typeof emailVerifications.$inferSelect;

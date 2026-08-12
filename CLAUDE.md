@@ -8,11 +8,16 @@ Project instructions for Claude Code. Read this before making changes.
 application containing both frontend and backend (server-side loaders/actions),
 backed by PostgreSQL. Runs on a VPS behind a Caddy reverse proxy, reachable
 over the public internet — see Deployment. Public reachability does not mean
-public sign-up: there is no way to create an account except being seeded in
-directly.
+open sign-up: the only way to create an account is via an invite token issued
+by an already-signed-in user (see Authentication) — `/register` rejects
+anyone without one.
 
-Scoped to **one household with two users**. Do not build multi-tenancy, org
-hierarchies, third-party household sign-up, or role permission systems.
+Scoped to **one household**. Do not build multi-tenancy, org hierarchies,
+third-party household sign-up, or role permission systems. Chore rotation,
+the Cleaning/Dashboard two-column view, and reminder assignees are all still
+built for exactly **two** people — see Chore rotation and Not in scope yet.
+Invites can technically add a third+ person today; that will visibly break
+those views until they're redesigned for N users, which hasn't happened yet.
 
 ## Stack
 
@@ -89,10 +94,11 @@ edit or delete yet. Each assignee shows as a chip colored the same as
 that user's avatar elsewhere in the UI.
 
 ### Household
-User list with role. Edit and invite buttons are **static placeholders** —
-present in the UI, intentionally not wired. Do not implement them without
-being asked, even now that real accounts exist — inviting someone is still
-out of scope (see Authentication, Not in scope yet).
+User list with role, plus `+ Inviter un membre`: any signed-in user can send
+an invite email to a new address (see Authentication). The **Edit** button
+stays a **static placeholder** — present in the UI, intentionally not wired.
+Do not implement it without being asked; editing/removing a user is still out
+of scope (see Not in scope yet).
 
 ## Chore rotation
 
@@ -117,6 +123,10 @@ Bedsheets does not have Corridor that week.
 Rules:
 
 - Signature: `getWeekAssignment(isoWeek: string, users: [User, User]): Assignment`
+  — the tuple type is load-bearing: this function is only defined for two
+  people. If the household ever has a third+ member (possible now via
+  invites, see Authentication), calling this needs a redesign first; don't
+  paper over it with `users[0]`/`users[1]` slicing
 - **Pure and deterministic** — same week in, same result out, no database access
 - Assignments are never written to the database. Only *completions* are stored.
 - User order is stable, from `households.member_order` (an array of
@@ -144,6 +154,8 @@ app/
     cleaning.tsx           # ?week=2026-W32
     reminders.tsx
     household.tsx
+    register.tsx           # public, requires ?token= from an invite
+    activate.tsx           # public, consumes the emailed activation link
   components/
     ui/                  # Button, Card, Checkbox, Modal, Input, Select, Badge
     layout/              # Sidebar, PageHeader
@@ -161,6 +173,9 @@ app/
     week.ts              # ISO week parsing and navigation
     ingredients.ts       # name normalisation and merging
     validation.ts        # Zod schemas shared by actions and forms
+    tokens.server.ts      # opaque token generation for invites/verification
+    mail.server.ts        # outgoing mail; logs instead of sending if SMTP unset
+    registration.server.ts # transactional invite -> user creation
 drizzle/                 # generated migrations — never hand-edit
 ```
 
@@ -185,7 +200,9 @@ Connection string in `DATABASE_URL`. The db client is a singleton in
 | Table | Notes |
 |---|---|
 | `households` | single row; holds `member_order` for stable rotation |
-| `users` | email, password_hash, household_id, name, avatar_key, role — see Authentication |
+| `users` | email, password_hash, household_id, name, avatar_key, role, email_verified_at nullable — see Authentication |
+| `invites` | household_id, invited_by_user_id, email, token, expires_at, accepted_at nullable |
+| `email_verifications` | user_id, token, expires_at, consumed_at nullable |
 | `shopping_lists` | name |
 | `shopping_items` | list_id, name, quantity, unit, checked, source_recipe_id nullable |
 | `recipes` | name, servings, instructions |
@@ -215,10 +232,11 @@ era. Mia and Sam are `users` rows. There is no separate "member" concept:
 one person entity only. The old `members` table is gone.
 
 `users` columns: `email`, `password_hash` (argon2id), `household_id`,
-`name`, `avatar_key`, `role`. `name` and `avatar_key` aren't new — they're
-carried over from the old `members` table, since the app still needs a
-display name and avatar everywhere (greeting, sidebar, chips). `role` is
-also carried over: a descriptive label ("Parent" / "Partenaire"), not a
+`name`, `avatar_key`, `role`, `email_verified_at` nullable. `name` and
+`avatar_key` aren't new — they're carried over from the old `members`
+table, since the app still needs a display name and avatar everywhere
+(greeting, sidebar, chips). `role` is also carried over: a descriptive
+label ("Parent" / "Partenaire" / whatever the invited person picks), not a
 permission level — this app still has no authorization system, per "Scoped
 to one household" above.
 
@@ -228,7 +246,44 @@ to one household" above.
 - Login action is rate-limited, per IP and per identifier (email)
 - Constant-time failure delay, and the same error message whether the
   account doesn't exist or the password is wrong — never reveal which
-- Still out of scope: OAuth, password reset, public sign-up
+- Login additionally refuses any account with `email_verified_at IS NULL`,
+  with a distinct message telling them to check their mail — this check
+  happens *after* password verification, not before, so it can't be used to
+  probe whether an email has an account
+- Still out of scope: OAuth, password reset. Sign-up is not open/public —
+  the only path is the invite flow below
+
+### Invite / register / activate
+
+Household growth is invite-gated, not self-serve:
+
+1. Any signed-in user can send an invite from **Household** (email only).
+   `createInvite()` writes an `invites` row with a random token
+   (`generateToken()`, 32 bytes hex) and a 7-day expiry, then
+   `sendInviteEmail()` mails a `/register?token=…` link.
+2. `/register` is a public route, but the loader/action both reject a
+   missing, expired, or already-accepted token — it isn't reachable without
+   a live invite. On submit, `registerFromInvite()` runs one transaction:
+   creates the `users` row (unverified), appends the new user's id to
+   `households.member_order` (so rotation/ordering picks them up — see
+   Chore rotation), marks the invite accepted, and issues an
+   `email_verifications` row (24h expiry). The activation email is sent
+   after the transaction commits.
+3. `/activate?token=…` is public. Its loader consumes the token (sets
+   `email_verified_at`, marks the verification row consumed) and redirects
+   to `/login?activated=1`. Login is refused until this step happens.
+
+Mail delivery is `app/lib/mail.server.ts`: if `SMTP_HOST` isn't set, it
+logs the email (with the link) to the console instead of sending — that's
+the local-dev path, and how you find invite/activation links when testing
+without real SMTP. Production needs `SMTP_HOST` (+ `SMTP_USER`/`SMTP_PASS`
+if the relay needs auth) and `APP_URL` set, so emailed links point at the
+real domain. See `.env.example`.
+
+Accounts that existed before this flow shipped (seeded directly, e.g. Mia
+and Sam) were backfilled with `email_verified_at = created_at` in the
+migration that added the column — they were never meant to need
+activation.
 
 ## UI conventions
 
@@ -344,12 +399,17 @@ VPN, no more low-power-ARM64 assumption — that whole constraint is gone.
 
 Do not build these unless explicitly asked:
 
-- Household edit / invite (buttons are deliberate placeholders)
-- Add/remove user flow
+- Household **edit** (button is a deliberate placeholder — invite is now wired, see Household)
+- Remove-user flow, or any way to revoke/expire an invite from the UI
+- Redesigning chore rotation, Cleaning/Dashboard's two-column layout, or
+  reminder assignees for more than two people — invites can technically
+  create a third+ user today, but nothing downstream of that has been
+  redesigned to handle it (see Chore rotation, Project intro)
 - Recipe creation and editing — the app reads recipes; seed them for now
 - Servings scaling of ingredient quantities
 - Store tags on shopping items
-- Notifications, push, or email
+- Push or in-app notifications (transactional invite/activation email is
+  the only mail the app sends)
 - Multi-tenancy or third-party household sign-up
 - Row-Level Security
 - React Native or any native mobile app

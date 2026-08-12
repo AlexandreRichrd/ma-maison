@@ -54,6 +54,7 @@ async function main() {
         avatarKey: "mia",
         email: "mia@example.com",
         passwordHash,
+        emailVerifiedAt: new Date(),
       },
       {
         householdId: household.id,
@@ -62,6 +63,7 @@ async function main() {
         avatarKey: "sam",
         email: "sam@example.com",
         passwordHash,
+        emailVerifiedAt: new Date(),
       },
     ])
     .returning();

@@ -14,7 +14,8 @@ export async function loader({ request }: Route.LoaderArgs) {
   if (await getSessionUserId(request)) {
     throw redirect("/");
   }
-  return null;
+  const activated = new URL(request.url).searchParams.get("activated") === "1";
+  return { activated };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -35,10 +36,23 @@ export async function action({ request }: Route.ActionArgs) {
     );
   }
 
+  if (!user.emailVerifiedAt) {
+    return data(
+      {
+        errors: {
+          general: [
+            "Ce compte n'est pas encore activé — vérifiez votre boîte mail pour le lien d'activation",
+          ],
+        },
+      },
+      { status: 400 },
+    );
+  }
+
   return createUserSession(request, user.id, "/");
 }
 
-export default function Login({ actionData }: Route.ComponentProps) {
+export default function Login({ loaderData, actionData }: Route.ComponentProps) {
   const errors = actionData && "errors" in actionData ? actionData.errors : undefined;
   const generalError =
     errors && "general" in errors ? errors.general?.[0] : undefined;
@@ -50,6 +64,11 @@ export default function Login({ actionData }: Route.ComponentProps) {
     <div className="flex min-h-screen items-center justify-center bg-surface px-4">
       <Card className="w-full max-w-sm">
         <div className="mb-5 font-serif text-xl font-bold">Hearth</div>
+        {loaderData.activated && (
+          <p className="mb-3 text-sm font-medium text-foreground" role="status">
+            Compte activé, vous pouvez vous connecter.
+          </p>
+        )}
         <Form method="post" className="flex flex-col gap-3">
           <Input
             label="Email"
