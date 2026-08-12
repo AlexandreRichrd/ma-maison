@@ -1,7 +1,7 @@
 import { Link } from "react-router";
 
 import { Card } from "~/components/ui";
-import type { ShoppingListPreview } from "~/db/queries/shopping.server";
+import type { ShoppingListPreview } from "~/lib/shopping-api.server";
 
 export function ShoppingWidget({ lists }: { lists: ShoppingListPreview[] }) {
   return (

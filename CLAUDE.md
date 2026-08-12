@@ -4,10 +4,23 @@ Project instructions for Claude Code. Read this before making changes.
 
 ## Project
 
-**Home Manager** — a self-hosted household app. A single React Router v7
-application containing both frontend and backend (server-side loaders/actions),
-backed by PostgreSQL. Runs on a VPS behind a Caddy reverse proxy, reachable
-over the public internet — see Deployment. Public reachability does not mean
+**Home Manager** — a self-hosted household app. This repo is the **frontend
+only**: a React Router v7 app (SSR) that renders the UI and talks to a
+separate NestJS API (`my-home-backend`, sibling repo — see its `CLAUDE.md`)
+over HTTP. This app holds **no database connection and no domain logic** —
+no Postgres, no chore-rotation algorithm, no ingredient-merging logic. If a
+piece of work sounds like "compute X" or "validate and persist Y", it belongs
+in the backend, not here.
+
+This app used to contain the backend too (server-side loaders/actions acting
+as the data layer, Drizzle against Postgres directly). That was pulled out
+into `my-home-backend` so the domain layer isn't tied to one frontend. Do not
+add a database client, an ORM, or domain logic back into this repo — see
+Stack.
+
+Runs on a VPS behind a Caddy reverse proxy, path-routed alongside the backend
+under one domain (`/api/*` → backend, everything else → this app) — reachable
+over the public internet, see Deployment. Public reachability does not mean
 open sign-up: the only way to create an account is via an invite token issued
 by an already-signed-in user (see Authentication) — `/register` rejects
 anyone without one.
@@ -23,14 +36,17 @@ those views until they're redesigned for N users, which hasn't happened yet.
 
 - React Router v7 (framework mode, SSR enabled) — routing, data loading, mutations
 - TypeScript, strict mode
-- PostgreSQL via Drizzle ORM
 - Tailwind CSS
 - Vite
 - Node 20+
 - Vitest + Playwright
 
-Do not add a separate API server, tRPC, or a client-side data-fetching library
-(React Query, SWR, Axios). Loaders and actions are the data layer.
+No database client or ORM here — see Project. Do not add tRPC or a
+client-side data-fetching library (React Query, SWR, Axios): loaders and
+actions are still the data layer from the browser's point of view, they just
+fetch from the NestJS API (`app/lib/api.server.ts`) instead of querying
+Postgres directly. Server-only code — the API client, the JWT cookie, secrets
+— lives in `.server.ts` files or inside loaders/actions, same rule as before.
 
 ## Sections
 
@@ -59,18 +75,12 @@ navigate or scroll the list.
   - via `+ New list`, which creates a list named after the recipe and
     **redirects to that list's detail page**
 
-Both paths go through one server-side function, `addIngredientsToList()`:
-
-- inserts one `shopping_items` row per ingredient
-- **merges** with an existing *unchecked* row of the same normalised name and
-  unit in the target list, summing quantities, rather than creating a duplicate
-- a *checked* row is not merged into — it is treated as already bought, so a new
-  unchecked row is created
-- tags each created row with `source_recipe_id`
-- runs in a single transaction; partial application is not acceptable
-
-Name normalisation (trim, lowercase, collapse whitespace) lives in
-`app/lib/ingredients.ts` and is unit-tested. Do not inline it.
+Both paths go through one backend endpoint (`addIngredientsToList()` in the
+API — see `my-home-backend/CLAUDE.md`) that merges into existing unchecked
+rows, tags created rows with `source_recipe_id`, and runs as a single
+transaction. This app just calls it and shows the result — see the
+Recipes section confirmation-copy note under UI conventions; the merge logic
+itself is not this repo's concern.
 
 ### Cleaning
 - Week navigator (`←` / `→`), driven by a `?week=` search param holding an ISO
@@ -83,8 +93,8 @@ Name normalisation (trim, lowercase, collapse whitespace) lives in
   person's chores; seeing the split is the whole point of the section.
 - Assignment is **derived, not stored** — see below. The stable, explicit
   anchor that ordering depends on is `households.member_order` (see Chore
-  rotation) — never derive "whose column is first" from query result order,
-  or the pairing could flip depending on who's signed in.
+  rotation) — never derive "whose column is first" from API response array
+  order, or the pairing could flip depending on who's signed in.
 
 ### Reminders
 Flat list with time and a done/undo toggle. Reversible; there is no
@@ -102,42 +112,20 @@ of scope (see Not in scope yet).
 
 ## Chore rotation
 
-The core domain rule. Implement it once, as a pure function in
-`app/lib/rotation.ts`, tested in isolation. Never scatter this logic across
-routes or components.
+The core domain rule, but it is **not implemented here**. The backend
+computes the weekly assignment (`getWeekAssignment()` in
+`my-home-backend/CLAUDE.md`, see that doc for the actual algorithm) and
+`GET /cleaning?week=…` returns it already merged with that week's
+completions. This app renders whatever the API returns — do not recompute,
+cache-and-diverge, or re-derive assignment from raw chore/completion data on
+this side. If the Cleaning view seems to need rotation logic client-side
+(e.g. instant optimistic UI on a toggle), that's still just reflecting the
+API's response shape, not recomputing the schedule.
 
-Two rotating groups, both keyed off the ISO week number relative to a fixed
-`ROTATION_EPOCH` constant:
-
-**Weekly swap** — alternates every week:
-- Group A: Kitchen, Trash
-- Group B: Bathroom, Surfaces, Floors
-
-**Biweekly swap** — alternates every two weeks:
-- Group C: Bedsheets
-- Group D: Corridor
-
-The biweekly pair is always assigned to **opposite** people: whoever has
-Bedsheets does not have Corridor that week.
-
-Rules:
-
-- Signature: `getWeekAssignment(isoWeek: string, users: [User, User]): Assignment`
-  — the tuple type is load-bearing: this function is only defined for two
-  people. If the household ever has a third+ member (possible now via
-  invites, see Authentication), calling this needs a redesign first; don't
-  paper over it with `users[0]`/`users[1]` slicing
-- **Pure and deterministic** — same week in, same result out, no database access
-- Assignments are never written to the database. Only *completions* are stored.
-- User order is stable, from `households.member_order` (an array of
-  `users.id` — the column name predates the `members` → `users` merge and
-  was kept as-is; it means "order of the household's people", not a
-  reference to the old `members` table, which no longer exists). Rotation
-  does not scramble if a row's `created_at` changes.
-
-Test past, current, and future weeks plus the year boundary — ISO weeks do not
-align with calendar years. Use `date-fns` (`getISOWeek`, `parseISO`), never a
-hand-rolled division by 7.
+The one thing this app still owns: **the signed-in user's column is
+displayed first**, both columns always visible — derive that ordering from
+which user id matches the current session, applied to whatever order the API
+returns. Never assume the API's array order tells you who's signed in.
 
 ## Layout
 
@@ -164,126 +152,85 @@ app/
     recipes/
     cleaning/
     reminders/
-  db/
-    schema.ts
-    index.ts             # db client singleton
-    queries/             # grouped by feature
   lib/
-    rotation.ts          # chore rotation — pure, heavily tested
-    week.ts              # ISO week parsing and navigation
-    ingredients.ts       # name normalisation and merging
-    validation.ts        # Zod schemas shared by actions and forms
-    tokens.server.ts      # opaque token generation for invites/verification
-    mail.server.ts        # outgoing mail; logs instead of sending if SMTP unset
-    registration.server.ts # transactional invite -> user creation
-drizzle/                 # generated migrations — never hand-edit
+    api.server.ts         # fetch wrapper: base URL, JWT header, error mapping
+    auth.server.ts         # JWT cookie storage, requireUser(), login/logout
+    week.ts                # ISO week parsing and navigation (display only)
+    validation.ts          # form-side validation that mirrors API error codes
 ```
+
+There is no `app/db/` and no `drizzle/` in this repo anymore — see Project.
 
 ## Data flow rules
 
 - **Loaders** read. **Actions** write. Never fetch in `useEffect`.
-- Server-only code (db client, queries, secrets) lives in `.server.ts` files or
-  inside loaders/actions. It must never be imported by a component module.
+- All API calls go through `app/lib/api.server.ts`, never a bare `fetch()`
+  scattered in a loader/action — it's the one place that attaches the JWT
+  `Authorization` header and maps API error shapes to something routes can
+  use
+- Server-only code (the API client, the JWT cookie, secrets) lives in
+  `.server.ts` files or inside loaders/actions. It must never be imported by
+  a component module
 - Mutations use `<Form method="post">`, or `useFetcher` for inline toggles that
-  should not navigate (checking an item, completing a chore, done/undo).
+  should not navigate (checking an item, completing a chore, done/undo)
 - After a successful action, return `redirect()` or plain data — React Router
-  revalidates loaders automatically. Do not manually refetch.
-- Validate every action input with Zod before touching the database. Return
-  `{ errors }` with a 400; never surface a raw validation error.
-- Every action carries an `intent` field so one route can host several mutations.
+  revalidates loaders automatically. Do not manually refetch
+- Actions still validate shape client-side before calling the API (fast
+  feedback), but the API's response is authoritative — surface its `errors`
+  array (see `my-home-backend/CLAUDE.md`'s API surface), mapped from
+  machine-readable `code` to French copy, don't re-derive validation logic
+  here
+- Every action carries an `intent` field so one route can host several mutations
+- A `401` from the API means the JWT is invalid or expired: clear the cookie
+  and redirect to `/login`. Don't try to silently retry or refresh — there is
+  no refresh token (see Authentication)
 
 ## Database
 
-Connection string in `DATABASE_URL`. The db client is a singleton in
-`app/db/index.ts` — import it, never construct a new `Pool`.
-
-| Table | Notes |
-|---|---|
-| `households` | single row; holds `member_order` for stable rotation |
-| `users` | email, password_hash, household_id, name, avatar_key, role, email_verified_at nullable — see Authentication |
-| `invites` | household_id, invited_by_user_id, email, token, expires_at, accepted_at nullable |
-| `email_verifications` | user_id, token, expires_at, consumed_at nullable |
-| `shopping_lists` | name |
-| `shopping_items` | list_id, name, quantity, unit, checked, source_recipe_id nullable |
-| `recipes` | name, servings, instructions |
-| `recipe_ingredients` | recipe_id, name, quantity, unit, position |
-| `chores` | name, rotation_group (`A`\|`B`\|`C`\|`D`) |
-| `chore_completions` | chore_id, user_id, iso_week, completed_at |
-| `reminders` | title, due_at, done_at nullable, assignee_ids (0-2, no FK — array column) |
-
-Conventions:
-
-- `id` is `uuid` with `defaultRandom()`
-- `created_at` / `updated_at` are `timestamptz`, not `timestamp`
-- Chore *assignment* is computed by `rotation.ts`. Only completions are persisted,
-  keyed by `(chore_id, iso_week)` with a unique constraint
-- Reminder completion is `done_at nullable`, not a boolean — undo sets it to null
-- `shopping_items.source_recipe_id` is `on delete set null`: deleting a recipe
-  must never remove items already on a list
-- Ingredient count on the recipe overview is an aggregate query, not a stored
-  counter column
-- Foreign keys always declare `onDelete` explicitly
-- Schema changes: edit `schema.ts`, run `db:generate`, review the SQL, then `db:migrate`
+None — this app has no database connection. Schema, migrations, and all
+queries live in `my-home-backend`. See that repo's `CLAUDE.md` for the table
+layout if you need to understand what shape the API returns.
 
 ## Authentication
 
-Real accounts — not the single shared household password from the VPN-only
-era. Mia and Sam are `users` rows. There is no separate "member" concept:
-one person entity only. The old `members` table is gone.
+The backend issues JWTs (see `my-home-backend/CLAUDE.md` — Authentication);
+this app's job is to hold that token safely and attach it to every API call.
 
-`users` columns: `email`, `password_hash` (argon2id), `household_id`,
-`name`, `avatar_key`, `role`, `email_verified_at` nullable. `name` and
-`avatar_key` aren't new — they're carried over from the old `members`
-table, since the app still needs a display name and avatar everywhere
-(greeting, sidebar, chips). `role` is also carried over: a descriptive
-label ("Parent" / "Partenaire" / whatever the invited person picks), not a
-permission level — this app still has no authorization system, per "Scoped
-to one household" above.
-
-- Session cookie carries `user_id`, not just an `authenticated` boolean
+- `POST /login` action calls the API's `/auth/login`, gets back
+  `{ accessToken, user }`, and stores `accessToken` in a session cookie via
+  `createCookieSessionStorage` (`app/lib/auth.server.ts`) — same mechanism as
+  before, just holding an opaque JWT instead of a raw `user_id`
+- **The JWT never reaches browser JS.** It lives only in the `HttpOnly`
+  session cookie and is read server-side in loaders/actions to build the
+  `Authorization: Bearer <token>` header via `api.server.ts`. Do not expose
+  it to a component, `useLoaderData`, or any client bundle — that would
+  defeat the point of choosing a cookie over `localStorage`
 - Cookie flags: `Secure`, `HttpOnly`, `SameSite=Lax`
-- Passwords hashed with argon2id
-- Login action is rate-limited, per IP and per identifier (email)
-- Constant-time failure delay, and the same error message whether the
-  account doesn't exist or the password is wrong — never reveal which
-- Login additionally refuses any account with `email_verified_at IS NULL`,
-  with a distinct message telling them to check their mail — this check
-  happens *after* password verification, not before, so it can't be used to
-  probe whether an email has an account
+- `requireUser(request)` (in `auth.server.ts`) reads the cookie, and either
+  calls a lightweight "who am I" API endpoint or decodes the JWT locally to
+  get the user id/expiry — redirects to `/login` if there's no token or the
+  API returns `401`
+- No refresh token exists yet (see backend's Authentication) — a `401` means
+  the session is over; clear the cookie and redirect, don't try to recover it
 - Still out of scope: OAuth, password reset. Sign-up is not open/public —
   the only path is the invite flow below
 
 ### Invite / register / activate
 
-Household growth is invite-gated, not self-serve:
+Household growth is invite-gated, not self-serve. This app renders the flow;
+the API owns tokens, expiry, and persistence (see
+`my-home-backend/CLAUDE.md`):
 
-1. Any signed-in user can send an invite from **Household** (email only).
-   `createInvite()` writes an `invites` row with a random token
-   (`generateToken()`, 32 bytes hex) and a 7-day expiry, then
-   `sendInviteEmail()` mails a `/register?token=…` link.
-2. `/register` is a public route, but the loader/action both reject a
-   missing, expired, or already-accepted token — it isn't reachable without
-   a live invite. On submit, `registerFromInvite()` runs one transaction:
-   creates the `users` row (unverified), appends the new user's id to
-   `households.member_order` (so rotation/ordering picks them up — see
-   Chore rotation), marks the invite accepted, and issues an
-   `email_verifications` row (24h expiry). The activation email is sent
-   after the transaction commits.
-3. `/activate?token=…` is public. Its loader consumes the token (sets
-   `email_verified_at`, marks the verification row consumed) and redirects
-   to `/login?activated=1`. Login is refused until this step happens.
-
-Mail delivery is `app/lib/mail.server.ts`: if `SMTP_HOST` isn't set, it
-logs the email (with the link) to the console instead of sending — that's
-the local-dev path, and how you find invite/activation links when testing
-without real SMTP. Production needs `SMTP_HOST` (+ `SMTP_USER`/`SMTP_PASS`
-if the relay needs auth) and `APP_URL` set, so emailed links point at the
-real domain. See `.env.example`.
-
-Accounts that existed before this flow shipped (seeded directly, e.g. Mia
-and Sam) were backfilled with `email_verified_at = created_at` in the
-migration that added the column — they were never meant to need
-activation.
+1. Any signed-in user can send an invite from **Household** (email only) —
+   this app posts to `/invites`, the API generates the token and sends the
+   mail
+2. `/register?token=…` is a public route. Its loader/action call the API's
+   `/auth/register`, which rejects a missing, expired, or already-accepted
+   token server-side — this app doesn't validate the token itself, it just
+   surfaces whatever error the API returns
+3. `/activate?token=…` is public. Its loader calls the API's `/auth/activate`
+   and redirects to `/login?activated=1` on success. Login is refused until
+   this step happens (enforced by the API, not here)
 
 ## UI conventions
 
@@ -321,12 +268,12 @@ npm run typecheck        # react-router typegen && tsc
 npm run lint
 npm run test             # vitest
 npm run test:e2e         # playwright
-npm run db:generate
-npm run db:migrate
-npm run db:seed
 ```
 
 Run `npm run typecheck` after touching routes — it regenerates route types.
+The API must be running locally (see `my-home-backend`) for `npm run dev` to
+be useful beyond static UI work — there's no seed/migrate step in this repo
+anymore, that's the backend's `prisma migrate dev` / seed script.
 
 ## Git workflow
 
@@ -351,47 +298,51 @@ commit without asking each time, scoped to local commits only.
 - Named exports, except route modules (default export required)
 - `type` over `interface` unless declaration merging is needed
 - No `any`. No non-null assertions (`!`) — narrow properly
-- Dates: store UTC, render in the household's local timezone
-- Quantities: `numeric` in Postgres, strings in TS. Never floats
-- The household is French-speaking. All user-facing text (UI copy, Zod
-  validation messages, seeded demo data) is French, hardcoded directly in
-  components — no i18n library, no translation-key indirection, since this
-  app is single-language by design. Date/time formatting uses the `fr`
-  date-fns locale and `Intl` with `"fr-FR"`. Code identifiers, comments, and
-  commit messages stay in English.
+- Dates: the API returns UTC ISO 8601, render in the household's local timezone
+- Quantities: strings over the wire and in TS, matching what the API sends. Never floats
+- The household is French-speaking. All user-facing text (UI copy, and the
+  French messages this app maps API error `code`s to) is French, hardcoded
+  directly in components — no i18n library, no translation-key indirection,
+  since this app is single-language by design. Seeded demo data lives in the
+  backend now, not here. Date/time formatting uses the `fr` date-fns locale
+  and `Intl` with `"fr-FR"`. Code identifiers, comments, and commit messages
+  stay in English.
 
 ## Testing
 
-- `rotation.ts` is the highest-value test target — cover weekly alternation,
-  biweekly alternation, the opposite-person constraint, and year boundaries
-- `addIngredientsToList()` — cover merge into an unchecked row, no-merge into a
-  checked row, unit mismatch, and the new-list-then-redirect path
-- Query functions get unit tests against a test database
-- Every action gets an invalid-input test, not just the happy path
+Rotation and ingredient-merge test coverage now lives in
+`my-home-backend` (see its Testing section) — don't re-add those tests here.
+This repo's tests are about rendering and wiring, not domain logic:
+
+- `week.ts` — ISO week parsing/navigation used for the `?week=` URL param
+- Every action gets an invalid-input test against a mocked API response
+  (both a `400` with `errors`, and a `401`), not just the happy path
 - Playwright covers: check off a shopping item, add a recipe to an existing list,
   create a list from a recipe, complete a chore, toggle a reminder, navigate weeks
+  — run against a real backend instance, not mocked, since it's testing the
+  integration too
 - Run `npm run typecheck && npm run test` before considering work finished
 
 ## Deployment
 
-A VPS, reverse-proxied by Caddy, reachable over the public internet. No more
-VPN, no more low-power-ARM64 assumption — that whole constraint is gone.
+A VPS, reverse-proxied by Caddy, reachable over the public internet,
+alongside the backend (see `my-home-backend/CLAUDE.md` — Deployment) and its
+Postgres. This app has no database to back up — that's entirely the
+backend's concern now.
 
-- Docker + `compose.yml` (`node:24-alpine`, no armv7 constraint)
-- Caddy in front of the app: automatic Let's Encrypt HTTPS, HSTS
+- Docker + `compose.yml` (`node:24-alpine`, no armv7 constraint), one service
+  among several (this app, the backend, Postgres) in a shared compose file
+- Caddy sits in front of **both** services on one domain: `/api/*` routed to
+  the backend container, everything else to this app — automatic Let's
+  Encrypt HTTPS, HSTS
 - Build on a development machine, not on the server
-- The app container binds `127.0.0.1:3000` only — Caddy is the only thing
-  that talks to it directly. Never `0.0.0.0`
-- Postgres stays on the Docker network only — no `ports:` mapping at all,
-  not even to `127.0.0.1`. **Flagged**: the `compose.yml` used for local dev
-  currently maps `127.0.0.1:5432` so `npm run dev` / `db:migrate` can reach
-  it from the host — that mapping is needed for local dev and must not
-  exist in whatever compose file actually ships to the VPS. Reconcile with
-  a separate prod compose file/override when the deployment work happens;
-  don't just delete the local mapping.
-- Back up with scheduled `pg_dump`, copied off the VPS — a volume snapshot
-  is not a backup, and neither is a backup that lives on the box it's
-  meant to protect against
+- This app's container binds `127.0.0.1:3000` (or an internal Docker network
+  address) only — Caddy is the only thing that talks to it directly. Never
+  `0.0.0.0`
+- This app needs the backend's public base URL (or its internal Docker
+  service name/port, since they're on the same Docker network) at build/run
+  time to know where to send API calls — check how that's wired before
+  assuming `localhost` works in prod
 - `public/robots.txt`: `Disallow: /` for the whole site. Publicly reachable
   is not the same as publicly listed
 
@@ -413,13 +364,14 @@ Do not build these unless explicitly asked:
 - Multi-tenancy or third-party household sign-up
 - Row-Level Security
 - React Native or any native mobile app
-- NestJS or any separate API server (see Stack — loaders/actions are the
-  data layer)
+- A second backend, a GraphQL layer, or bypassing `my-home-backend` to talk
+  to Postgres directly from this repo — see Project
 - Store distribution — TWA, Capacitor, or otherwise
 - Billing, advertising
 - OAuth, password reset (see Authentication)
 
 ## When unsure
 
-Ask before adding a dependency, changing the schema, or introducing a new
-architectural pattern. Prefer the boring solution that fits the stack already here.
+Ask before adding a dependency, changing how this app talks to the API, or
+introducing a new architectural pattern. Prefer the boring solution that fits
+the stack already here.

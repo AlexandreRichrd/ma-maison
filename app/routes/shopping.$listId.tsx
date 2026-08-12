@@ -4,12 +4,12 @@ import { data, useFetcher } from "react-router";
 import { PageHeader } from "~/components/layout/PageHeader";
 import { ShoppingItemRow } from "~/components/shopping/ShoppingItemRow";
 import { Button, cardClassName, Input, Modal } from "~/components/ui";
+import { ApiRequestError, mapApiErrors } from "~/lib/api.server";
 import {
   addShoppingItem,
   getShoppingListDetail,
   toggleShoppingItem,
-} from "~/db/queries/shopping.server";
-import { addItemSchema, toggleItemSchema } from "~/lib/validation";
+} from "~/lib/shopping-api.server";
 
 import type { Route } from "./+types/shopping.$listId";
 
@@ -19,8 +19,8 @@ export function meta({ loaderData }: Route.MetaArgs) {
   ];
 }
 
-export async function loader({ params }: Route.LoaderArgs) {
-  const detail = await getShoppingListDetail(params.listId);
+export async function loader({ request, params }: Route.LoaderArgs) {
+  const detail = await getShoppingListDetail(request, params.listId);
   if (!detail) {
     throw data("Introuvable", { status: 404 });
   }
@@ -31,22 +31,27 @@ export async function action({ request, params }: Route.ActionArgs) {
   const formData = await request.formData();
   const intent = formData.get("intent");
 
-  if (intent === "toggleItem") {
-    const result = toggleItemSchema.safeParse(Object.fromEntries(formData));
-    if (!result.success) {
-      return data({ errors: result.error.flatten().fieldErrors }, { status: 400 });
+  try {
+    if (intent === "toggleItem") {
+      const itemId = formData.get("itemId");
+      await toggleShoppingItem(request, typeof itemId === "string" ? itemId : "");
+      return { ok: true };
     }
-    await toggleShoppingItem(result.data.itemId);
-    return { ok: true };
-  }
 
-  if (intent === "addItem") {
-    const result = addItemSchema.safeParse(Object.fromEntries(formData));
-    if (!result.success) {
-      return data({ errors: result.error.flatten().fieldErrors }, { status: 400 });
+    if (intent === "addItem") {
+      await addShoppingItem(request, {
+        listId: params.listId,
+        name: String(formData.get("name") ?? ""),
+        quantity: String(formData.get("quantity") ?? ""),
+        unit: String(formData.get("unit") ?? ""),
+      });
+      return { ok: true };
     }
-    await addShoppingItem({ listId: params.listId, ...result.data });
-    return { ok: true };
+  } catch (error) {
+    if (error instanceof ApiRequestError) {
+      return data({ errors: mapApiErrors(error.errors) }, { status: error.status });
+    }
+    throw error;
   }
 
   throw data("Intention inconnue", { status: 400 });

@@ -1,8 +1,8 @@
 import { useFetcher } from "react-router";
 
-import type { ShoppingItem } from "~/db/schema";
+import type { ShoppingItemDto } from "~/lib/shopping-api.server";
 
-export function ShoppingItemRow({ item }: { item: ShoppingItem }) {
+export function ShoppingItemRow({ item }: { item: ShoppingItemDto }) {
   const fetcher = useFetcher();
   const checked = fetcher.state !== "idle" ? !item.checked : item.checked;
 

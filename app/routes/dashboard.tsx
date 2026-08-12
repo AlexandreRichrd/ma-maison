@@ -22,7 +22,7 @@ function getGreeting(): string {
 export async function loader({ request }: Route.LoaderArgs) {
   const currentUser = await requireUser(request);
   const [dashboard, users] = await Promise.all([
-    getDashboardData(),
+    getDashboardData(request),
     getOrderedUsers(),
   ]);
   return { ...dashboard, users, currentUserId: currentUser.id };

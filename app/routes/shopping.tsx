@@ -4,8 +4,8 @@ import { data, redirect, useFetcher } from "react-router";
 import { ShoppingListCard } from "~/components/shopping/ShoppingListCard";
 import { Button, Input, Modal } from "~/components/ui";
 import { PageHeader } from "~/components/layout/PageHeader";
-import { createShoppingList, getShoppingLists } from "~/db/queries/shopping.server";
-import { newListSchema } from "~/lib/validation";
+import { ApiRequestError, mapApiErrors } from "~/lib/api.server";
+import { createShoppingList, getShoppingLists } from "~/lib/shopping-api.server";
 
 import type { Route } from "./+types/shopping";
 
@@ -13,20 +13,24 @@ export function meta() {
   return [{ title: "Courses · Hearth" }];
 }
 
-export async function loader() {
-  const lists = await getShoppingLists();
+export async function loader({ request }: Route.LoaderArgs) {
+  const lists = await getShoppingLists(request);
   return { lists };
 }
 
 export async function action({ request }: Route.ActionArgs) {
   const formData = await request.formData();
-  const result = newListSchema.safeParse(Object.fromEntries(formData));
-  if (!result.success) {
-    return data({ errors: result.error.flatten().fieldErrors }, { status: 400 });
-  }
+  const name = formData.get("name");
 
-  const listId = await createShoppingList(result.data.name);
-  return redirect(`/shopping/${listId}`);
+  try {
+    const listId = await createShoppingList(request, typeof name === "string" ? name : "");
+    return redirect(`/shopping/${listId}`);
+  } catch (error) {
+    if (error instanceof ApiRequestError) {
+      return data({ errors: mapApiErrors(error.errors) }, { status: error.status });
+    }
+    throw error;
+  }
 }
 
 export default function Shopping({ loaderData }: Route.ComponentProps) {

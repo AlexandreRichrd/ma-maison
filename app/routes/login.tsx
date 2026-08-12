@@ -25,31 +25,19 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ errors: result.error.flatten().fieldErrors }, { status: 400 });
   }
 
-  const user = await login(request, result.data.email, result.data.password);
-  if (!user) {
+  const outcome = await login(result.data.email, result.data.password);
+  if (!outcome.ok) {
     // Deliberately not attached to either field, and the same message
     // whether the account doesn't exist, the password is wrong, or the
     // attempt was rate-limited — never reveal which.
-    return data(
-      { errors: { general: ["Email ou mot de passe incorrect"] } },
-      { status: 400 },
-    );
+    const message =
+      outcome.reason === "email_not_verified"
+        ? "Ce compte n'est pas encore activé — vérifiez votre boîte mail pour le lien d'activation"
+        : "Email ou mot de passe incorrect";
+    return data({ errors: { general: [message] } }, { status: 400 });
   }
 
-  if (!user.emailVerifiedAt) {
-    return data(
-      {
-        errors: {
-          general: [
-            "Ce compte n'est pas encore activé — vérifiez votre boîte mail pour le lien d'activation",
-          ],
-        },
-      },
-      { status: 400 },
-    );
-  }
-
-  return createUserSession(request, user.id, "/");
+  return createUserSession(request, outcome.accessToken, "/");
 }
 
 export default function Login({ loaderData, actionData }: Route.ComponentProps) {

@@ -3,8 +3,8 @@ import { data, redirect, useFetcher } from "react-router";
 import { PageHeader } from "~/components/layout/PageHeader";
 import { Button, cardClassName } from "~/components/ui";
 import { getRecipeDetail } from "~/db/queries/recipes.server";
-import { getShoppingLists } from "~/db/queries/shopping.server";
 import { addIngredientsToList } from "~/lib/ingredients.server";
+import { getShoppingLists } from "~/lib/shopping-api.server";
 import { addAsNewListSchema, addToExistingListSchema } from "~/lib/validation";
 
 import type { Route } from "./+types/recipes.$recipeId";
@@ -15,12 +15,12 @@ export function meta({ loaderData }: Route.MetaArgs) {
   ];
 }
 
-export async function loader({ params }: Route.LoaderArgs) {
+export async function loader({ request, params }: Route.LoaderArgs) {
   const detail = await getRecipeDetail(params.recipeId);
   if (!detail) {
     throw data("Introuvable", { status: 404 });
   }
-  const shoppingLists = await getShoppingLists();
+  const shoppingLists = await getShoppingLists(request);
   return { ...detail, shoppingLists };
 }
 
@@ -36,7 +36,7 @@ export async function action({ request, params }: Route.ActionArgs) {
     const outcome = await addIngredientsToList(params.recipeId, {
       listId: result.data.listId,
     });
-    const lists = await getShoppingLists();
+    const lists = await getShoppingLists(request);
     const listName = lists.find((l) => l.id === result.data.listId)?.name ?? "la liste";
     return { outcome, listName };
   }

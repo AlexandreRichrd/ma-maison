@@ -1,13 +1,16 @@
-import { verify } from "@node-rs/argon2";
+import jwt from "jsonwebtoken";
 import { createCookieSessionStorage, redirect } from "react-router";
 
-import { getUserByEmail, getUserById } from "~/db/queries/users.server";
+import { getUserById } from "~/db/queries/users.server";
 import type { User } from "~/db/schema";
 
-import { isRateLimited, recordAttempt } from "./rate-limit.server";
+import { ApiRequestError, apiFetch } from "./api.server";
 
 if (!process.env.SESSION_SECRET) {
   throw new Error("SESSION_SECRET is not set");
+}
+if (!process.env.JWT_SECRET) {
+  throw new Error("JWT_SECRET is not set");
 }
 
 const sessionStorage = createCookieSessionStorage({
@@ -21,79 +24,74 @@ const sessionStorage = createCookieSessionStorage({
   },
 });
 
-// A real argon2id hash of a password nobody uses. Verifying against this
-// when the email isn't found keeps the "no such account" path doing the
-// same work (and taking about the same time) as the "wrong password"
-// path, instead of returning early and leaking account existence via
-// timing.
-const DUMMY_HASH =
-  "$argon2id$v=19$m=19456,t=2,p=1$ioSxuYJZObNpknjkAXiaHA$fuvU0zVW56c/NCnBLgVmn9fWMYuuXF0OEDROsvjkJV4";
+export type PublicUser = Omit<User, "passwordHash">;
 
-const MIN_LOGIN_MS = 300;
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function clientKey(request: Request): string {
-  return request.headers.get("x-forwarded-for") ?? "unknown";
-}
+export type LoginResult =
+  | { ok: true; accessToken: string; user: PublicUser }
+  | { ok: false; reason: "invalid_credentials" | "email_not_verified" };
 
 /**
- * Verifies email + password. Rate-limited per IP and per identifier, with
- * a floor on how fast it can return — so both "no such account" and
- * "wrong password" look the same from outside: same generic result,
- * same rough timing. Callers must show one generic error message
- * regardless of which of these caused the null.
+ * Delegates to the API's POST /auth/login — password verification, timing-
+ * attack mitigation, and rate limiting all live there now (see
+ * my-home-backend/CLAUDE.md's Authentication section). Same generic
+ * "invalid_credentials" result whether the account doesn't exist, the
+ * password is wrong, or the attempt was rate-limited — never reveal which.
+ * A genuine infrastructure failure (API unreachable, 5xx) is left to
+ * propagate rather than folded into that generic result.
  */
-export async function login(
-  request: Request,
-  email: string,
-  password: string,
-): Promise<User | null> {
-  const started = Date.now();
-  const normalizedEmail = email.trim().toLowerCase();
-  const ipKey = `ip:${clientKey(request)}`;
-  const identifierKey = `email:${normalizedEmail}`;
-
-  if (isRateLimited(ipKey) || isRateLimited(identifierKey)) {
-    await sleep(Math.max(0, MIN_LOGIN_MS - (Date.now() - started)));
-    return null;
+export async function login(email: string, password: string): Promise<LoginResult> {
+  try {
+    const data = await apiFetch<{ accessToken: string; user: PublicUser }>("/auth/login", {
+      method: "POST",
+      body: { email, password },
+    });
+    return { ok: true, ...data };
+  } catch (error) {
+    if (!(error instanceof ApiRequestError)) throw error;
+    const reason = error.errors.some((e) => e.code === "email_not_verified")
+      ? "email_not_verified"
+      : "invalid_credentials";
+    return { ok: false, reason };
   }
-  recordAttempt(ipKey);
-  recordAttempt(identifierKey);
-
-  const user = await getUserByEmail(normalizedEmail);
-  const ok = await verify(user?.passwordHash ?? DUMMY_HASH, password);
-
-  await sleep(Math.max(0, MIN_LOGIN_MS - (Date.now() - started)));
-
-  return ok && user ? user : null;
 }
 
 export async function createUserSession(
   request: Request,
-  userId: string,
+  accessToken: string,
   redirectTo: string,
 ): Promise<Response> {
-  const session = await sessionStorage.getSession(
-    request.headers.get("Cookie"),
-  );
-  session.set("userId", userId);
+  const session = await sessionStorage.getSession(request.headers.get("Cookie"));
+  session.set("accessToken", accessToken);
   return redirect(redirectTo, {
     headers: { "Set-Cookie": await sessionStorage.commitSession(session) },
   });
 }
 
-export async function getSessionUserId(request: Request): Promise<string | null> {
-  const session = await sessionStorage.getSession(
-    request.headers.get("Cookie"),
-  );
-  const id = session.get("userId");
-  return typeof id === "string" ? id : null;
+export async function getAccessToken(request: Request): Promise<string | null> {
+  const session = await sessionStorage.getSession(request.headers.get("Cookie"));
+  const token = session.get("accessToken");
+  return typeof token === "string" ? token : null;
 }
 
-/** Redirects to /login if there's no session, or the session's user no longer exists. */
+/** Verifies the JWT locally (no network round trip) and returns the user id it names, or null. */
+export async function getSessionUserId(request: Request): Promise<string | null> {
+  const accessToken = await getAccessToken(request);
+  if (!accessToken) return null;
+  try {
+    const payload = jwt.verify(accessToken, process.env.JWT_SECRET as string);
+    return typeof payload === "object" && typeof payload.sub === "string" ? payload.sub : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Redirects to /login if there's no valid, unexpired JWT, or the session's
+ * user no longer exists. The token names a user id only — this app still
+ * reads the full user row via Drizzle (same physical database the API
+ * writes to; only the Shopping section's own data goes through the API in
+ * this step, not user lookups for the sidebar).
+ */
 export async function requireUser(request: Request): Promise<User> {
   const userId = await getSessionUserId(request);
   if (!userId) {
@@ -107,9 +105,7 @@ export async function requireUser(request: Request): Promise<User> {
 }
 
 export async function destroySession(request: Request): Promise<Response> {
-  const session = await sessionStorage.getSession(
-    request.headers.get("Cookie"),
-  );
+  const session = await sessionStorage.getSession(request.headers.get("Cookie"));
   return redirect("/login", {
     headers: { "Set-Cookie": await sessionStorage.destroySession(session) },
   });
