@@ -1,10 +1,10 @@
 import { and, eq } from "drizzle-orm";
 
 import { db } from "~/db/index.server";
-import { choreCompletions, chores, type User } from "~/db/schema";
+import { choreCompletions, chores } from "~/db/schema";
 import { getWeekAssignment, type UserAssignment } from "~/lib/rotation";
 
-import { getOrderedUsers } from "./household.server";
+import { getOrderedUsers, type HouseholdMember } from "./household.server";
 
 export type ChoreView = {
   id: string;
@@ -14,16 +14,19 @@ export type ChoreView = {
 };
 
 export type UserWeekChores = {
-  user: User;
+  user: HouseholdMember;
   chores: ChoreView[];
 };
 
 async function getAssignment(
   isoWeek: string,
-): Promise<{ users: [User, User]; assignment: [UserAssignment, UserAssignment] } | null> {
+): Promise<{
+  users: [HouseholdMember, HouseholdMember];
+  assignment: [UserAssignment, UserAssignment];
+} | null> {
   const orderedUsers = await getOrderedUsers();
   if (orderedUsers.length < 2) return null;
-  const [first, second] = orderedUsers as [User, User];
+  const [first, second] = orderedUsers as [HouseholdMember, HouseholdMember];
   const assignment = getWeekAssignment(isoWeek, [
     { id: first.id },
     { id: second.id },
@@ -52,7 +55,7 @@ export async function getWeekChores(
 
   const buildForUser = (
     userAssignment: UserAssignment,
-    user: User,
+    user: HouseholdMember,
   ): UserWeekChores => ({
     user,
     chores: [

@@ -1,6 +1,6 @@
 import { useLocation } from "react-router";
 
-import type { User } from "~/db/schema";
+import type { HouseholdMember } from "~/db/queries/household.server";
 
 import { sectionTitleForPath } from "./nav-items";
 
@@ -9,7 +9,7 @@ export function MobileHeader({
   avatarColorClassName,
   onOpenNav,
 }: {
-  currentUser: User | undefined;
+  currentUser: HouseholdMember | undefined;
   avatarColorClassName: string | undefined;
   onOpenNav: () => void;
 }) {

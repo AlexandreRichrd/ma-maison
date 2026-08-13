@@ -2,14 +2,15 @@ import { Link } from "react-router";
 
 import { AssigneeChips } from "~/components/reminders/AssigneeChips";
 import { Card } from "~/components/ui";
-import type { Reminder, User } from "~/db/schema";
+import type { Reminder } from "~/db/schema";
+import type { HouseholdMember } from "~/db/queries/household.server";
 
 export function ReminderWidget({
   reminders,
   users,
 }: {
   reminders: Reminder[];
-  users: User[];
+  users: HouseholdMember[];
 }) {
   return (
     <Card className="sm:col-span-2">

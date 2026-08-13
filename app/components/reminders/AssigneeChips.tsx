@@ -1,4 +1,4 @@
-import type { User } from "~/db/schema";
+import type { HouseholdMember } from "~/db/queries/household.server";
 import { avatarColorFor } from "~/lib/user-colors";
 
 export function AssigneeChips({
@@ -6,7 +6,7 @@ export function AssigneeChips({
   users,
 }: {
   assigneeIds: string[];
-  users: User[];
+  users: HouseholdMember[];
 }) {
   return (
     <>

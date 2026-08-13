@@ -1,7 +1,8 @@
 import { useFetcher } from "react-router";
 
 import { Button, Card } from "~/components/ui";
-import type { Reminder, User } from "~/db/schema";
+import type { Reminder } from "~/db/schema";
+import type { HouseholdMember } from "~/db/queries/household.server";
 
 import { AssigneeChips } from "./AssigneeChips";
 
@@ -10,7 +11,7 @@ export function ReminderRow({
   users,
 }: {
   reminder: Reminder;
-  users: User[];
+  users: HouseholdMember[];
 }) {
   const fetcher = useFetcher();
   const done = fetcher.state !== "idle" ? !reminder.doneAt : reminder.doneAt != null;

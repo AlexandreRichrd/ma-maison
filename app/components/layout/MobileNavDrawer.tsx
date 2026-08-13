@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-import type { User } from "~/db/schema";
+import type { HouseholdMember } from "~/db/queries/household.server";
 
 import { HouseholdFooter } from "./HouseholdFooter";
 import { NavList } from "./NavList";
@@ -12,7 +12,7 @@ export function MobileNavDrawer({
 }: {
   open: boolean;
   onClose: () => void;
-  users: User[];
+  users: HouseholdMember[];
 }) {
   const panelRef = useRef<HTMLElement>(null);
   const lastFocusedRef = useRef<HTMLElement | null>(null);

@@ -1,9 +1,9 @@
 import { Form } from "react-router";
 
-import type { User } from "~/db/schema";
+import type { HouseholdMember } from "~/db/queries/household.server";
 import { AVATAR_COLORS } from "~/lib/user-colors";
 
-export function HouseholdFooter({ users }: { users: User[] }) {
+export function HouseholdFooter({ users }: { users: HouseholdMember[] }) {
   return (
     <div className="mt-auto flex flex-col gap-2.5">
       <div className="px-2 text-xs font-semibold tracking-wide text-muted uppercase">
