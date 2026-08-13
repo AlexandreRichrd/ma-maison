@@ -206,10 +206,21 @@ this app's job is to hold that token safely and attach it to every API call.
   it to a component, `useLoaderData`, or any client bundle — that would
   defeat the point of choosing a cookie over `localStorage`
 - Cookie flags: `Secure`, `HttpOnly`, `SameSite=Lax`
-- `requireUser(request)` (in `auth.server.ts`) reads the cookie, and either
-  calls a lightweight "who am I" API endpoint or decodes the JWT locally to
-  get the user id/expiry — redirects to `/login` if there's no token or the
-  API returns `401`
+- `requireUser(request)` (in `auth.server.ts`) reads the cookie and verifies
+  the JWT **locally** with `jsonwebtoken` against `JWT_PUBLIC_KEY` — no
+  network round trip to the API just to know who's signed in. Redirects to
+  `/login` if there's no token, the signature doesn't check out, or it's
+  expired
+- **RS256, not a shared secret.** The backend signs with a private key this
+  app never sees; `JWT_PUBLIC_KEY` is the matching RSA public key, copied
+  from `my-home-backend`'s `JWT_PUBLIC_KEY` (see that repo's `.env.example`
+  for how the keypair is generated) — not a secret itself, but it has to be
+  the exact right value or every local verification fails with a signature
+  error. `jwt.verify()` is called with `algorithms: ["RS256"]` pinned
+  explicitly; dropping that allow-list would let a forged token specify
+  `alg: HS256` and get verified using the public key as an HMAC secret,
+  since it isn't secret. This repo holds no private key and never signs
+  anything — only the backend issues tokens
 - No refresh token exists yet (see backend's Authentication) — a `401` means
   the session is over; clear the cookie and redirect, don't try to recover it
 - Still out of scope: OAuth, password reset. Sign-up is not open/public —
@@ -288,6 +299,8 @@ commit without asking each time, scoped to local commits only.
 - Commit messages: short, imperative, present tense (`add cleaning week
   navigator`, `fix rotation opposite-person constraint`), following the style
   of prior commits in the repo.
+- **Do not add a `Co-Authored-By` trailer or any AI-attribution line to commit
+  messages.**
 - **Never push.** Commits stay local until the user explicitly asks for a
   push — the general git safety protocol around pushing still applies.
 - Still ask before any destructive or history-rewriting git operation

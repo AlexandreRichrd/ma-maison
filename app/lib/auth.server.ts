@@ -9,9 +9,14 @@ import { ApiRequestError, apiFetch } from "./api.server";
 if (!process.env.SESSION_SECRET) {
   throw new Error("SESSION_SECRET is not set");
 }
-if (!process.env.JWT_SECRET) {
-  throw new Error("JWT_SECRET is not set");
+if (!process.env.JWT_PUBLIC_KEY) {
+  throw new Error("JWT_PUBLIC_KEY is not set");
 }
+
+// Same single-line-with-\n convention as my-home-backend's JWT_PRIVATE_KEY
+// — see that repo's .env.example for why (Docker Compose / VPS shell
+// environments don't reliably carry real newlines in a variable's value).
+const JWT_PUBLIC_KEY = process.env.JWT_PUBLIC_KEY.replace(/\\n/g, "\n");
 
 const sessionStorage = createCookieSessionStorage({
   cookie: {
@@ -78,7 +83,10 @@ export async function getSessionUserId(request: Request): Promise<string | null>
   const accessToken = await getAccessToken(request);
   if (!accessToken) return null;
   try {
-    const payload = jwt.verify(accessToken, process.env.JWT_SECRET as string);
+    // algorithms restricted to RS256 — without that allow-list, a forged
+    // token could set alg: HS256 in its header and get verified using
+    // this public key as an HMAC secret, since it isn't a secret.
+    const payload = jwt.verify(accessToken, JWT_PUBLIC_KEY, { algorithms: ["RS256"] });
     return typeof payload === "object" && typeof payload.sub === "string" ? payload.sub : null;
   } catch {
     return null;
