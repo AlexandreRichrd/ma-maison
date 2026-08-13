@@ -1,13 +1,20 @@
 import { useState } from "react";
 import { data, useFetcher } from "react-router";
 
+import { ChoresSection } from "~/components/household/ChoresSection";
 import { PageHeader } from "~/components/layout/PageHeader";
 import { Button, Card, Input, Modal } from "~/components/ui";
 import { ApiRequestError, mapApiErrors } from "~/lib/api.server";
 import { requireUser } from "~/lib/auth.server";
+import { createChore, deleteChore, getChoreConfigs, updateChore } from "~/lib/chores-api.server";
 import { createInvite, getOrderedUsers } from "~/lib/household-api.server";
 import { AVATAR_COLORS } from "~/lib/user-colors";
-import { inviteSchema } from "~/lib/validation";
+import {
+  addChoreSchema,
+  deleteChoreSchema,
+  editChoreSchema,
+  inviteSchema,
+} from "~/lib/validation";
 
 import type { Route } from "./+types/household";
 
@@ -17,19 +24,50 @@ export function meta() {
 
 export async function loader({ request }: Route.LoaderArgs) {
   await requireUser(request);
-  const users = await getOrderedUsers(request);
-  return { users };
+  const [users, chores] = await Promise.all([
+    getOrderedUsers(request),
+    getChoreConfigs(request),
+  ]);
+  return { users, chores };
 }
 
 export async function action({ request }: Route.ActionArgs) {
   await requireUser(request);
   const formData = await request.formData();
-  const result = inviteSchema.safeParse(Object.fromEntries(formData));
-  if (!result.success) {
-    return data({ errors: result.error.flatten().fieldErrors }, { status: 400 });
-  }
+  const intent = formData.get("intent");
 
   try {
+    if (intent === "addChore") {
+      const result = addChoreSchema.safeParse(Object.fromEntries(formData));
+      if (!result.success) {
+        return data({ errors: result.error.flatten().fieldErrors }, { status: 400 });
+      }
+      await createChore(request, result.data);
+      return { ok: true };
+    }
+
+    if (intent === "editChore") {
+      const result = editChoreSchema.safeParse(Object.fromEntries(formData));
+      if (!result.success) {
+        return data({ errors: result.error.flatten().fieldErrors }, { status: 400 });
+      }
+      await updateChore(request, result.data.choreId, result.data);
+      return { ok: true };
+    }
+
+    if (intent === "deleteChore") {
+      const result = deleteChoreSchema.safeParse(Object.fromEntries(formData));
+      if (!result.success) {
+        return data({ errors: result.error.flatten().fieldErrors }, { status: 400 });
+      }
+      await deleteChore(request, result.data.choreId);
+      return { ok: true };
+    }
+
+    const result = inviteSchema.safeParse(Object.fromEntries(formData));
+    if (!result.success) {
+      return data({ errors: result.error.flatten().fieldErrors }, { status: 400 });
+    }
     // The API creates the invite unconditionally — an "email already has
     // an account" check happens at registration time instead (see
     // my-home-backend/CLAUDE.md), not here.
@@ -90,6 +128,8 @@ export default function Household({ loaderData }: Route.ComponentProps) {
           </p>
         )}
       </Modal>
+
+      <ChoresSection chores={loaderData.chores} users={loaderData.users} />
     </div>
   );
 }
