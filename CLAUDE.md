@@ -7,16 +7,17 @@ Project instructions for Claude Code. Read this before making changes.
 **Home Manager** — a self-hosted household app. This repo is the **frontend
 only**: a React Router v7 app (SSR) that renders the UI and talks to a
 separate NestJS API (`my-home-backend`, sibling repo — see its `CLAUDE.md`)
-over HTTP. This app holds **no database connection and no domain logic** —
-no Postgres, no chore-rotation algorithm, no ingredient-merging logic. If a
-piece of work sounds like "compute X" or "validate and persist Y", it belongs
-in the backend, not here.
+over HTTP. Application code here holds **no database connection and no
+domain logic** — no chore-rotation algorithm, no ingredient-merging logic.
+If a piece of work sounds like "compute X" or "validate and persist Y", it
+belongs in the backend, not here.
 
 This app used to contain the backend too (server-side loaders/actions acting
 as the data layer, Drizzle against Postgres directly). That was pulled out
 into `my-home-backend` so the domain layer isn't tied to one frontend. Do not
-add a database client, an ORM, or domain logic back into this repo — see
-Stack.
+add a database client, an ORM, or domain logic back into application code —
+see Stack. One deliberate exception: `app/db/` (Drizzle) still exists purely
+to run `npm run db:seed` for local dev — see Database.
 
 Runs on a VPS behind a Caddy reverse proxy, path-routed alongside the backend
 under one domain (`/api/*` → backend, everything else → this app) — reachable
@@ -41,12 +42,14 @@ those views until they're redesigned for N users, which hasn't happened yet.
 - Node 20+
 - Vitest + Playwright
 
-No database client or ORM here — see Project. Do not add tRPC or a
-client-side data-fetching library (React Query, SWR, Axios): loaders and
-actions are still the data layer from the browser's point of view, they just
-fetch from the NestJS API (`app/lib/api.server.ts`) instead of querying
-Postgres directly. Server-only code — the API client, the JWT cookie, secrets
-— lives in `.server.ts` files or inside loaders/actions, same rule as before.
+No database client or ORM in application code — see Project (`app/db/`'s
+Drizzle setup is a local-dev-seeding-only exception, not application code;
+see Database). Do not add tRPC or a client-side data-fetching library
+(React Query, SWR, Axios): loaders and actions are still the data layer from
+the browser's point of view, they just fetch from the NestJS API
+(`app/lib/api.server.ts`) instead of querying Postgres directly. Server-only
+code — the API client, the JWT cookie, secrets — lives in `.server.ts` files
+or inside loaders/actions, same rule as before.
 
 ## Sections
 
@@ -159,7 +162,8 @@ app/
     validation.ts          # form-side validation that mirrors API error codes
 ```
 
-There is no `app/db/` and no `drizzle/` in this repo anymore — see Project.
+`app/db/` still exists, but only for local dev seeding (`npm run db:seed`)
+— see Database. No route, loader, action, or component reads from it.
 
 ## Data flow rules
 
@@ -187,9 +191,20 @@ There is no `app/db/` and no `drizzle/` in this repo anymore — see Project.
 
 ## Database
 
-None — this app has no database connection. Schema, migrations, and all
-queries live in `my-home-backend`. See that repo's `CLAUDE.md` for the table
-layout if you need to understand what shape the API returns.
+No application code has a database connection. Schema, migrations, and all
+queries the app *serves* live in `my-home-backend`. See that repo's
+`CLAUDE.md` for the table layout if you need to understand what shape the
+API returns.
+
+One deliberate, isolated exception: `app/db/` still has a Drizzle setup
+(`schema.ts`, `index.server.ts`) and `app/db/seed.ts`, kept solely so
+`npm run db:seed` can populate a fresh local Postgres for `npm run dev` —
+`my-home-backend` has no seed path of its own today. Nothing under
+`app/routes/`, `app/lib/`, or `app/components/` imports from `app/db/`; if
+that ever stops being true, something has regressed. This is the one
+remaining piece of the Drizzle-to-API migration (see Project) and is tracked
+as a separate cleanup, not an oversight — removing it requires either a
+backend seed path or accepting no way to seed a fresh dev database.
 
 ## Authentication
 
@@ -292,12 +307,14 @@ npm run typecheck        # react-router typegen && tsc
 npm run lint
 npm run test             # vitest
 npm run test:e2e         # playwright
+npm run db:seed          # tsx app/db/seed.ts — see Database
 ```
 
 Run `npm run typecheck` after touching routes — it regenerates route types.
 The API must be running locally (see `my-home-backend`) for `npm run dev` to
-be useful beyond static UI work — there's no seed/migrate step in this repo
-anymore, that's the backend's `prisma migrate dev` / seed script.
+be useful beyond static UI work. Schema and migrations are entirely
+`my-home-backend`'s concern (`prisma migrate dev`) — `npm run db:seed` here
+is local-dev demo data only, and doesn't touch schema.
 
 ## Git workflow
 
@@ -329,9 +346,9 @@ commit without asking each time, scoped to local commits only.
 - The household is French-speaking. All user-facing text (UI copy, and the
   French messages this app maps API error `code`s to) is French, hardcoded
   directly in components — no i18n library, no translation-key indirection,
-  since this app is single-language by design. Seeded demo data lives in the
-  backend now, not here. Date/time formatting uses the `fr` date-fns locale
-  and `Intl` with `"fr-FR"`. Code identifiers, comments, and commit messages
+  since this app is single-language by design. Date/time formatting uses the
+  `fr` date-fns locale and `Intl` with `"fr-FR"`. Code identifiers, comments,
+  and commit messages
   stay in English.
 
 ## Testing

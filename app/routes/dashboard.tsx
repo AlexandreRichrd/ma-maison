@@ -2,9 +2,9 @@ import { CleaningWidget } from "~/components/dashboard/CleaningWidget";
 import { HomeClimateWidget } from "~/components/dashboard/HomeClimateWidget";
 import { ReminderWidget } from "~/components/dashboard/ReminderWidget";
 import { ShoppingWidget } from "~/components/dashboard/ShoppingWidget";
-import { getDashboardData } from "~/db/queries/dashboard.server";
 import { requireUser } from "~/lib/auth.server";
 import { withCurrentUserFirst } from "~/lib/cleaning-order";
+import { getDashboardData } from "~/lib/dashboard.server";
 import { getOrderedUsers } from "~/lib/household-api.server";
 
 import type { Route } from "./+types/dashboard";
