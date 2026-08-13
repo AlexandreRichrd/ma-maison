@@ -58,9 +58,15 @@ export function ChoreColumn({
         <span className="font-serif text-base font-semibold">{userChores.user.name}</span>
       </div>
       <div className="flex flex-col gap-2">
-        {userChores.chores.map((chore) => (
-          <ChoreRow key={chore.id} chore={chore} isoWeek={isoWeek} />
-        ))}
+        {userChores.chores.length === 0 ? (
+          <p className="rounded-lg bg-surface px-3 py-2.5 text-sm font-medium text-muted">
+            Rien à faire cette semaine.
+          </p>
+        ) : (
+          userChores.chores.map((chore) => (
+            <ChoreRow key={chore.id} chore={chore} isoWeek={isoWeek} />
+          ))
+        )}
       </div>
     </Card>
   );

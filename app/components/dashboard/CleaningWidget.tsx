@@ -36,11 +36,17 @@ export function CleaningWidget({
               </div>
               <span className="text-sm font-semibold">{user.name}</span>
             </div>
-            {chores.map((chore) => (
-              <div key={chore.id} className="py-1.5 pr-2.5 pl-[30px] text-sm font-medium">
-                {chore.name}
-              </div>
-            ))}
+            {chores.length === 0 ? (
+              <p className="py-1.5 pr-2.5 pl-[30px] text-sm font-medium text-muted">
+                Rien à faire cette semaine.
+              </p>
+            ) : (
+              chores.map((chore) => (
+                <div key={chore.id} className="py-1.5 pr-2.5 pl-[30px] text-sm font-medium">
+                  {chore.name}
+                </div>
+              ))
+            )}
           </div>
         ))}
       </div>

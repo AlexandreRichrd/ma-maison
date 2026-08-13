@@ -72,10 +72,6 @@ export default function Cleaning({ loaderData }: Route.ComponentProps) {
           />
         ))}
       </div>
-      <p className="mt-5 text-sm font-medium text-muted">
-        Cuisine/poubelles et salle de bain/surfaces/sols changent chaque semaine. Draps et couloir
-        changent toutes les 2 semaines.
-      </p>
     </div>
   );
 }
