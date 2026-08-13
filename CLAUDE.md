@@ -113,17 +113,44 @@ stays a **static placeholder** — present in the UI, intentionally not wired.
 Do not implement it without being asked; editing/removing a user is still out
 of scope (see Not in scope yet).
 
+Below that, a **Corvées** card (`components/household/ChoresSection.tsx`) is
+the admin UI for chore configuration — add, edit, and remove chores, each
+with a name, frequency (every N weeks), and either "alterne" (rotating) or
+"toujours la même personne" (pinned, with a person picker). It lands here
+rather than a new sidebar section: Household already functions as the
+household-configuration page, and this app is deliberately kept to six
+sections (see Sections above). One shared `<Modal>` handles both add and
+edit (same pattern as the invite modal); a second `<Modal>` is a delete
+confirmation, since removing a chore also deletes its completion history and
+nothing else in the app currently needs a destructive-action confirmation.
+The anchor-week field is a native `<input type="week">` — its value format
+(`YYYY-Www`) already matches `isValidIsoWeek()`, no custom picker needed.
+
 ## Chore rotation
 
-The core domain rule, but it is **not implemented here**. The backend
-computes the weekly assignment (`getWeekAssignment()` in
-`my-home-backend/CLAUDE.md`, see that doc for the actual algorithm) and
-`GET /cleaning?week=…` returns it already merged with that week's
-completions. This app renders whatever the API returns — do not recompute,
-cache-and-diverge, or re-derive assignment from raw chore/completion data on
-this side. If the Cleaning view seems to need rotation logic client-side
-(e.g. instant optimistic UI on a toggle), that's still just reflecting the
-API's response shape, not recomputing the schedule.
+The core domain rule, but it is **not implemented here**. Each chore now
+carries its own frequency/assignment config (see
+`my-home-backend/CLAUDE.md`'s Chore rotation section for the actual
+algorithm); the backend computes each week's occurrences and
+`GET /cleaning?week=…` returns them already grouped by user and merged with
+that week's completions. This app renders whatever the API returns — do not
+recompute, cache-and-diverge, or re-derive assignment from raw chore/
+completion data on this side. If the Cleaning view seems to need rotation
+logic client-side (e.g. instant optimistic UI on a toggle), that's still
+just reflecting the API's response shape, not recomputing the schedule.
+
+`ChoreDto.frequencyWeeks` is a plain number (1 = weekly, N = every N weeks)
+— `lib/cleaning-api.server.ts`'s `frequencyLabel()` turns it into French
+("Chaque semaine" / "Toutes les N semaines"), covering any N instead of a
+fixed weekly/biweekly pair.
+
+Both response entries are always present, but a chore with `frequencyWeeks
+> 1` is entirely absent from the response on its off-weeks (not returned
+with `done: false` — just not there at all), and any user's `chores` array
+can legitimately be empty for a given week (nothing assigned to them, or
+nothing occurring at all). `ChoreColumn` and `CleaningWidget` both render a
+muted "Rien à faire cette semaine." placeholder row instead of going blank
+in that case — never render an empty column with no explanation.
 
 The one thing this app still owns: **the signed-in user's column is
 displayed first**, both columns always visible — derive that ordering from
@@ -155,11 +182,13 @@ app/
     recipes/
     cleaning/
     reminders/
+    household/            # ChoresSection.tsx — chore admin CRUD
   lib/
     api.server.ts         # fetch wrapper: base URL, JWT header, error mapping
     auth.server.ts         # JWT cookie storage, requireUser(), login/logout
     week.ts                # ISO week parsing and navigation (display only)
     validation.ts          # form-side validation that mirrors API error codes
+    chores-api.server.ts   # chore config CRUD client
 ```
 
 `app/db/` still exists, but only for local dev seeding (`npm run db:seed`)
