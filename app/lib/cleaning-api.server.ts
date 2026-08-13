@@ -8,12 +8,10 @@ export type HouseholdMemberDto = {
   role: string;
 };
 
-type ChoreFrequency = "weekly" | "biweekly";
-
 type ChoreDto = {
   id: string;
   name: string;
-  frequency: ChoreFrequency;
+  frequencyWeeks: number;
   done: boolean;
 };
 
@@ -25,7 +23,7 @@ type UserWeekChoresResponse = {
 export type ChoreView = {
   id: string;
   name: string;
-  tag: "Chaque semaine" | "Toutes les 2 semaines";
+  tag: string;
   done: boolean;
 };
 
@@ -34,13 +32,12 @@ export type UserWeekChores = {
   chores: ChoreView[];
 };
 
-// The API returns a machine-readable frequency, not display copy (see
+// The API returns a machine-readable frequencyWeeks, not display copy (see
 // my-home-backend/CLAUDE.md's API surface section) — this app owns the
 // French label, same convention as api.server.ts's ERROR_MESSAGES.
-const FREQUENCY_LABEL: Record<ChoreFrequency, ChoreView["tag"]> = {
-  weekly: "Chaque semaine",
-  biweekly: "Toutes les 2 semaines",
-};
+function frequencyLabel(frequencyWeeks: number): string {
+  return frequencyWeeks === 1 ? "Chaque semaine" : `Toutes les ${frequencyWeeks} semaines`;
+}
 
 /** Always in stable households.member_order order — see cleaning-order.ts for
  * "signed-in user first" display reordering, which happens in the caller. */
@@ -58,7 +55,7 @@ export async function getWeekChores(
     chores: entry.chores.map((chore) => ({
       id: chore.id,
       name: chore.name,
-      tag: FREQUENCY_LABEL[chore.frequency],
+      tag: frequencyLabel(chore.frequencyWeeks),
       done: chore.done,
     })),
   }));
