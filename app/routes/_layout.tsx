@@ -4,15 +4,15 @@ import { Outlet } from "react-router";
 import { MobileHeader } from "~/components/layout/MobileHeader";
 import { MobileNavDrawer } from "~/components/layout/MobileNavDrawer";
 import { Sidebar } from "~/components/layout/Sidebar";
-import { getOrderedUsers } from "~/db/queries/household.server";
 import { requireUser } from "~/lib/auth.server";
+import { getOrderedUsers } from "~/lib/household-api.server";
 import { avatarColorFor } from "~/lib/user-colors";
 
 import type { Route } from "./+types/_layout";
 
 export async function loader({ request }: Route.LoaderArgs) {
   const currentUser = await requireUser(request);
-  const users = await getOrderedUsers();
+  const users = await getOrderedUsers(request);
   return { users, currentUserId: currentUser.id };
 }
 

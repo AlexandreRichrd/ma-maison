@@ -1,4 +1,4 @@
-import type { HouseholdMember } from "~/db/queries/household.server";
+import type { HouseholdMember } from "~/lib/household-api.server";
 
 import { HouseholdFooter } from "./HouseholdFooter";
 import { NavList } from "./NavList";

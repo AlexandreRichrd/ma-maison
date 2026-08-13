@@ -1,6 +1,6 @@
 import { useLocation } from "react-router";
 
-import type { HouseholdMember } from "~/db/queries/household.server";
+import type { HouseholdMember } from "~/lib/household-api.server";
 
 import { sectionTitleForPath } from "./nav-items";
 

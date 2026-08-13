@@ -1,11 +1,8 @@
 import { redirect } from "react-router";
 
 import { Card } from "~/components/ui";
-import {
-  consumeEmailVerification,
-  getEmailVerificationByToken,
-  isVerificationUsable,
-} from "~/db/queries/email-verifications.server";
+import { ApiRequestError } from "~/lib/api.server";
+import { activateAccount } from "~/lib/auth.server";
 
 import type { Route } from "./+types/activate";
 
@@ -15,13 +12,19 @@ export function meta() {
 
 export async function loader({ request }: Route.LoaderArgs) {
   const token = new URL(request.url).searchParams.get("token");
-  const verification = token ? await getEmailVerificationByToken(token) : null;
-
-  if (!verification || !isVerificationUsable(verification)) {
+  if (!token) {
     return { valid: false as const };
   }
 
-  await consumeEmailVerification(verification);
+  try {
+    await activateAccount(token);
+  } catch (error) {
+    if (error instanceof ApiRequestError) {
+      return { valid: false as const };
+    }
+    throw error;
+  }
+
   throw redirect("/login?activated=1");
 }
 

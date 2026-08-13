@@ -3,9 +3,9 @@ import { HomeClimateWidget } from "~/components/dashboard/HomeClimateWidget";
 import { ReminderWidget } from "~/components/dashboard/ReminderWidget";
 import { ShoppingWidget } from "~/components/dashboard/ShoppingWidget";
 import { getDashboardData } from "~/db/queries/dashboard.server";
-import { getOrderedUsers } from "~/db/queries/household.server";
 import { requireUser } from "~/lib/auth.server";
 import { withCurrentUserFirst } from "~/lib/cleaning-order";
+import { getOrderedUsers } from "~/lib/household-api.server";
 
 import type { Route } from "./+types/dashboard";
 
@@ -23,7 +23,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   const currentUser = await requireUser(request);
   const [dashboard, users] = await Promise.all([
     getDashboardData(request),
-    getOrderedUsers(),
+    getOrderedUsers(request),
   ]);
   return { ...dashboard, users, currentUserId: currentUser.id };
 }

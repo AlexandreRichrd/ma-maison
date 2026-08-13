@@ -1,7 +1,7 @@
 import { useFetcher } from "react-router";
 
 import { Button, Card } from "~/components/ui";
-import type { HouseholdMember } from "~/db/queries/household.server";
+import type { HouseholdMember } from "~/lib/household-api.server";
 import type { Reminder } from "~/lib/reminders-api.server";
 
 import { AssigneeChips } from "./AssigneeChips";

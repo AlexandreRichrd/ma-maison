@@ -3,11 +3,9 @@ import { data, useFetcher } from "react-router";
 
 import { PageHeader } from "~/components/layout/PageHeader";
 import { Button, Card, Input, Modal } from "~/components/ui";
-import { createInvite } from "~/db/queries/invites.server";
-import { getOrderedUsers } from "~/db/queries/household.server";
-import { getUserByEmail } from "~/db/queries/users.server";
+import { ApiRequestError, mapApiErrors } from "~/lib/api.server";
 import { requireUser } from "~/lib/auth.server";
-import { sendInviteEmail } from "~/lib/mail.server";
+import { createInvite, getOrderedUsers } from "~/lib/household-api.server";
 import { AVATAR_COLORS } from "~/lib/user-colors";
 import { inviteSchema } from "~/lib/validation";
 
@@ -18,36 +16,31 @@ export function meta() {
 }
 
 export async function loader({ request }: Route.LoaderArgs) {
-  const currentUser = await requireUser(request);
-  const users = await getOrderedUsers();
-  return { users, householdId: currentUser.householdId };
+  await requireUser(request);
+  const users = await getOrderedUsers(request);
+  return { users };
 }
 
 export async function action({ request }: Route.ActionArgs) {
-  const currentUser = await requireUser(request);
+  await requireUser(request);
   const formData = await request.formData();
   const result = inviteSchema.safeParse(Object.fromEntries(formData));
   if (!result.success) {
     return data({ errors: result.error.flatten().fieldErrors }, { status: 400 });
   }
 
-  const normalizedEmail = result.data.email.toLowerCase();
-  const existing = await getUserByEmail(normalizedEmail);
-  if (existing) {
-    return data(
-      { errors: { email: ["Cette adresse a déjà un compte"] } },
-      { status: 400 },
-    );
+  try {
+    // The API creates the invite unconditionally — an "email already has
+    // an account" check happens at registration time instead (see
+    // my-home-backend/CLAUDE.md), not here.
+    await createInvite(request, result.data.email.toLowerCase());
+    return { ok: true };
+  } catch (error) {
+    if (error instanceof ApiRequestError) {
+      return data({ errors: mapApiErrors(error.errors) }, { status: error.status });
+    }
+    throw error;
   }
-
-  const invite = await createInvite({
-    householdId: currentUser.householdId,
-    invitedByUserId: currentUser.id,
-    email: normalizedEmail,
-  });
-  await sendInviteEmail(normalizedEmail, invite.token);
-
-  return { ok: true };
 }
 
 export default function Household({ loaderData }: Route.ComponentProps) {

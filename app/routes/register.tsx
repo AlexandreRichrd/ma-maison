@@ -1,10 +1,8 @@
 import { data, Form } from "react-router";
 
 import { Button, Card, Input } from "~/components/ui";
-import { getInviteByToken, isInviteUsable } from "~/db/queries/invites.server";
-import { getUserByEmail } from "~/db/queries/users.server";
-import { sendActivationEmail } from "~/lib/mail.server";
-import { registerFromInvite } from "~/lib/registration.server";
+import { ApiRequestError, mapApiErrors } from "~/lib/api.server";
+import { getInviteEmail, registerAccount } from "~/lib/auth.server";
 import { registerSchema } from "~/lib/validation";
 
 import type { Route } from "./+types/register";
@@ -17,10 +15,10 @@ export async function loader({ request }: Route.LoaderArgs) {
   const token = new URL(request.url).searchParams.get("token");
   if (!token) return { valid: false as const };
 
-  const invite = await getInviteByToken(token);
-  if (!invite || !isInviteUsable(invite)) return { valid: false as const };
+  const email = await getInviteEmail(token);
+  if (!email) return { valid: false as const };
 
-  return { valid: true as const, email: invite.email, token };
+  return { valid: true as const, email, token };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -30,38 +28,18 @@ export async function action({ request }: Route.ActionArgs) {
     return data({ errors: result.error.flatten().fieldErrors }, { status: 400 });
   }
 
-  // Re-checked here, not just in the loader — the invite could expire or
-  // get used by a second tab between page load and submit.
-  const invite = await getInviteByToken(result.data.token);
-  if (!invite || !isInviteUsable(invite)) {
-    return data(
-      { errors: { general: ["Ce lien d'invitation est invalide ou a expiré"] } },
-      { status: 400 },
-    );
+  try {
+    // Re-validated by the API here, not just by the loader's earlier
+    // lookup — the invite could expire or get used by a second tab between
+    // page load and submit.
+    const outcome = await registerAccount(result.data);
+    return { ok: true as const, email: outcome.email };
+  } catch (error) {
+    if (error instanceof ApiRequestError) {
+      return data({ errors: mapApiErrors(error.errors) }, { status: error.status });
+    }
+    throw error;
   }
-
-  // A previous invite to the same address could already have been
-  // completed (or a second invite issued before the first was used) —
-  // catch it here rather than hitting the DB's unique constraint.
-  const existing = await getUserByEmail(invite.email);
-  if (existing) {
-    return data(
-      { errors: { general: ["Un compte existe déjà pour cette adresse"] } },
-      { status: 400 },
-    );
-  }
-
-  const { verificationToken } = await registerFromInvite({
-    inviteId: invite.id,
-    householdId: invite.householdId,
-    email: invite.email,
-    name: result.data.name,
-    role: result.data.role,
-    password: result.data.password,
-  });
-  await sendActivationEmail(invite.email, verificationToken);
-
-  return { ok: true as const, email: invite.email };
 }
 
 export default function Register({ loaderData, actionData }: Route.ComponentProps) {
@@ -70,7 +48,12 @@ export default function Register({ loaderData, actionData }: Route.ComponentProp
   const roleErrors = errors && "role" in errors ? errors.role : undefined;
   const passwordErrors = errors && "password" in errors ? errors.password : undefined;
   const confirmErrors = errors && "confirmPassword" in errors ? errors.confirmPassword : undefined;
-  const generalError = errors && "general" in errors ? errors.general?.[0] : undefined;
+  // "token" covers the API's invite_invalid/required codes (the hidden
+  // token field has no field-level slot of its own) — same display spot as
+  // a whole-form "general" error like email_taken.
+  const generalError =
+    (errors && "general" in errors ? errors.general?.[0] : undefined) ??
+    (errors && "token" in errors ? errors.token?.[0] : undefined);
   const succeeded = actionData !== undefined && "ok" in actionData && actionData.ok;
 
   return (

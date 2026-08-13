@@ -4,9 +4,9 @@ import { data, useFetcher } from "react-router";
 import { PageHeader } from "~/components/layout/PageHeader";
 import { ReminderRow } from "~/components/reminders/ReminderRow";
 import { Button, Checkbox, Input, Modal } from "~/components/ui";
-import { getOrderedUsers } from "~/db/queries/household.server";
 import { ApiRequestError, mapApiErrors } from "~/lib/api.server";
 import { requireUser } from "~/lib/auth.server";
+import { getOrderedUsers } from "~/lib/household-api.server";
 import { createReminder, getReminders, toggleReminder } from "~/lib/reminders-api.server";
 import { addReminderSchema, toggleReminderSchema } from "~/lib/validation";
 
@@ -20,7 +20,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   const currentUser = await requireUser(request);
   const [reminders, users] = await Promise.all([
     getReminders(request),
-    getOrderedUsers(),
+    getOrderedUsers(request),
   ]);
   return { reminders, users, currentUserId: currentUser.id };
 }

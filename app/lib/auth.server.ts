@@ -60,6 +60,50 @@ export async function login(email: string, password: string): Promise<LoginResul
   }
 }
 
+export type RegisterInput = {
+  token: string;
+  name: string;
+  role: string;
+  password: string;
+  confirmPassword: string;
+};
+
+/** Delegates to the API's POST /auth/register — see my-home-backend/CLAUDE.md's Authentication section. */
+export async function registerAccount(
+  input: RegisterInput,
+): Promise<{ ok: true; email: string }> {
+  return apiFetch<{ ok: true; email: string }>("/auth/register", {
+    method: "POST",
+    body: input,
+  });
+}
+
+/** Delegates to the API's POST /auth/activate. */
+export async function activateAccount(token: string): Promise<{ ok: true }> {
+  return apiFetch<{ ok: true }>("/auth/activate", {
+    method: "POST",
+    body: { token },
+  });
+}
+
+/**
+ * Which email an invite token is for, and whether it's still usable — read-
+ * only, doesn't consume the invite. Null for a missing, expired, or
+ * already-accepted token (the API's GET /invites/:token 404s all three the
+ * same way, on purpose — see my-home-backend/CLAUDE.md).
+ */
+export async function getInviteEmail(token: string): Promise<string | null> {
+  try {
+    const { email } = await apiFetch<{ email: string }>(`/invites/${encodeURIComponent(token)}`);
+    return email;
+  } catch (error) {
+    if (error instanceof ApiRequestError && error.status === 404) {
+      return null;
+    }
+    throw error;
+  }
+}
+
 export async function createUserSession(
   request: Request,
   accessToken: string,

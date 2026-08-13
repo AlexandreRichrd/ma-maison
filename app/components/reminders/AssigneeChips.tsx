@@ -1,4 +1,4 @@
-import type { HouseholdMember } from "~/db/queries/household.server";
+import type { HouseholdMember } from "~/lib/household-api.server";
 import { avatarColorFor } from "~/lib/user-colors";
 
 export function AssigneeChips({

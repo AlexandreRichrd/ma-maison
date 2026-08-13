@@ -1,6 +1,6 @@
 import { Form } from "react-router";
 
-import type { HouseholdMember } from "~/db/queries/household.server";
+import type { HouseholdMember } from "~/lib/household-api.server";
 import { AVATAR_COLORS } from "~/lib/user-colors";
 
 export function HouseholdFooter({ users }: { users: HouseholdMember[] }) {
