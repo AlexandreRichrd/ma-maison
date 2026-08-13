@@ -72,6 +72,10 @@ const ERROR_MESSAGES: Record<string, string> = {
   not_found: "Introuvable",
   invalid_target: "Cible invalide",
   unauthenticated: "Merci de vous reconnecter",
+  too_small: "Valeur trop petite",
+  // Only reachable via a stale/replayed toggle — the UI never renders a
+  // checkbox for a chore that isn't scheduled this week.
+  chore_not_scheduled: "Cette tâche n'est pas prévue cette semaine",
 };
 
 export function mapApiErrors(errors: ApiFieldError[]): Record<string, string[]> {

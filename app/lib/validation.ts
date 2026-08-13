@@ -61,6 +61,34 @@ export const toggleChoreSchema = z.object({
   isoWeek: z.string().refine(isValidIsoWeek, "Semaine ISO invalide"),
 });
 
+const choreFieldsSchema = {
+  name: z.string().trim().min(1, "Le nom de la corvée est requis"),
+  frequencyWeeks: z
+    .string()
+    .trim()
+    .regex(/^\d+$/, "Doit être un nombre entier")
+    .refine((value) => Number(value) >= 1, "Doit être au moins 1"),
+  assignmentMode: z.enum(["ROTATING", "PINNED"]),
+  anchorIsoWeek: z.string().refine(isValidIsoWeek, "Semaine ISO invalide"),
+  anchorUserId: z.uuid(),
+};
+
+export const addChoreSchema = z.object({
+  intent: z.literal("addChore"),
+  ...choreFieldsSchema,
+});
+
+export const editChoreSchema = z.object({
+  intent: z.literal("editChore"),
+  choreId: z.uuid(),
+  ...choreFieldsSchema,
+});
+
+export const deleteChoreSchema = z.object({
+  intent: z.literal("deleteChore"),
+  choreId: z.uuid(),
+});
+
 export const toggleReminderSchema = z.object({
   intent: z.literal("toggleReminder"),
   reminderId: z.uuid(),
