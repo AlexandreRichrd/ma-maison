@@ -2,8 +2,9 @@ import { data, redirect } from "react-router";
 
 import { ChoreColumn } from "~/components/cleaning/ChoreColumn";
 import { WeekNavigator } from "~/components/cleaning/WeekNavigator";
-import { getWeekChores, toggleChoreCompletion } from "~/db/queries/cleaning.server";
+import { ApiRequestError, mapApiErrors } from "~/lib/api.server";
 import { requireUser } from "~/lib/auth.server";
+import { getWeekChores, toggleChoreCompletion } from "~/lib/cleaning-api.server";
 import { withCurrentUserFirst } from "~/lib/cleaning-order";
 import { avatarColorFor } from "~/lib/user-colors";
 import { toggleChoreSchema } from "~/lib/validation";
@@ -24,7 +25,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     throw redirect(`/cleaning?week=${getCurrentIsoWeek()}`);
   }
 
-  const weekChores = await getWeekChores(weekParam);
+  const weekChores = await getWeekChores(request, weekParam);
   return { isoWeek: weekParam, weekChores, currentUserId: currentUser.id };
 }
 
@@ -34,8 +35,16 @@ export async function action({ request }: Route.ActionArgs) {
   if (!result.success) {
     return data({ errors: result.error.flatten().fieldErrors }, { status: 400 });
   }
-  await toggleChoreCompletion(result.data.choreId, result.data.isoWeek);
-  return { ok: true };
+
+  try {
+    await toggleChoreCompletion(request, result.data.choreId, result.data.isoWeek);
+    return { ok: true };
+  } catch (error) {
+    if (error instanceof ApiRequestError) {
+      return data({ errors: mapApiErrors(error.errors) }, { status: error.status });
+    }
+    throw error;
+  }
 }
 
 export default function Cleaning({ loaderData }: Route.ComponentProps) {

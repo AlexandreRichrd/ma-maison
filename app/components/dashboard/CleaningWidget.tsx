@@ -1,7 +1,7 @@
 import { Link } from "react-router";
 
 import { Card } from "~/components/ui";
-import type { UserWeekChores } from "~/db/queries/cleaning.server";
+import type { UserWeekChores } from "~/lib/cleaning-api.server";
 import { avatarColorFor } from "~/lib/user-colors";
 
 export function CleaningWidget({

@@ -1,7 +1,7 @@
 import { useFetcher } from "react-router";
 
 import { Card } from "~/components/ui";
-import type { UserWeekChores } from "~/db/queries/cleaning.server";
+import type { UserWeekChores } from "~/lib/cleaning-api.server";
 
 function ChoreRow({
   chore,

@@ -1,4 +1,4 @@
-import type { UserWeekChores } from "~/db/queries/cleaning.server";
+import type { UserWeekChores } from "~/lib/cleaning-api.server";
 
 /**
  * Presentation-only reorder for "signed-in user's column first" — the
