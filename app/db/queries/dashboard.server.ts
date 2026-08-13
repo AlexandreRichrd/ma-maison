@@ -1,9 +1,7 @@
 import { getWeekChores, type UserWeekChores } from "~/lib/cleaning-api.server";
+import { getDueTodayReminders, type Reminder } from "~/lib/reminders-api.server";
 import { getCurrentIsoWeek } from "~/lib/week";
 import { getShoppingLists, type ShoppingListPreview } from "~/lib/shopping-api.server";
-
-import { getDueTodayReminders } from "./reminders.server";
-import type { Reminder } from "~/db/schema";
 
 export type DashboardData = {
   dueReminders: Reminder[];
@@ -13,7 +11,7 @@ export type DashboardData = {
 
 export async function getDashboardData(request: Request): Promise<DashboardData> {
   const [dueReminders, shoppingLists, weekChores] = await Promise.all([
-    getDueTodayReminders(),
+    getDueTodayReminders(request),
     getShoppingLists(request),
     getWeekChores(request, getCurrentIsoWeek()),
   ]);

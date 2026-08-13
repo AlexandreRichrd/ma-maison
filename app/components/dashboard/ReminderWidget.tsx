@@ -2,8 +2,8 @@ import { Link } from "react-router";
 
 import { AssigneeChips } from "~/components/reminders/AssigneeChips";
 import { Card } from "~/components/ui";
-import type { Reminder } from "~/db/schema";
 import type { HouseholdMember } from "~/db/queries/household.server";
+import type { Reminder } from "~/lib/reminders-api.server";
 
 export function ReminderWidget({
   reminders,

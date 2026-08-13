@@ -5,8 +5,9 @@ import { PageHeader } from "~/components/layout/PageHeader";
 import { ReminderRow } from "~/components/reminders/ReminderRow";
 import { Button, Checkbox, Input, Modal } from "~/components/ui";
 import { getOrderedUsers } from "~/db/queries/household.server";
-import { createReminder, getReminders, toggleReminder } from "~/db/queries/reminders.server";
+import { ApiRequestError, mapApiErrors } from "~/lib/api.server";
 import { requireUser } from "~/lib/auth.server";
+import { createReminder, getReminders, toggleReminder } from "~/lib/reminders-api.server";
 import { addReminderSchema, toggleReminderSchema } from "~/lib/validation";
 
 import type { Route } from "./+types/reminders";
@@ -17,7 +18,10 @@ export function meta() {
 
 export async function loader({ request }: Route.LoaderArgs) {
   const currentUser = await requireUser(request);
-  const [reminders, users] = await Promise.all([getReminders(), getOrderedUsers()]);
+  const [reminders, users] = await Promise.all([
+    getReminders(request),
+    getOrderedUsers(),
+  ]);
   return { reminders, users, currentUserId: currentUser.id };
 }
 
@@ -25,30 +29,37 @@ export async function action({ request }: Route.ActionArgs) {
   const formData = await request.formData();
   const intent = formData.get("intent");
 
-  if (intent === "addReminder") {
-    const result = addReminderSchema.safeParse({
-      intent,
-      title: formData.get("title"),
-      dueAt: formData.get("dueAt"),
-      assigneeIds: formData.getAll("assigneeIds"),
-    });
+  try {
+    if (intent === "addReminder") {
+      const result = addReminderSchema.safeParse({
+        intent,
+        title: formData.get("title"),
+        dueAt: formData.get("dueAt"),
+        assigneeIds: formData.getAll("assigneeIds"),
+      });
+      if (!result.success) {
+        return data({ errors: result.error.flatten().fieldErrors }, { status: 400 });
+      }
+      await createReminder(request, {
+        title: result.data.title,
+        dueAt: new Date(result.data.dueAt),
+        assigneeIds: result.data.assigneeIds,
+      });
+      return { ok: true };
+    }
+
+    const result = toggleReminderSchema.safeParse(Object.fromEntries(formData));
     if (!result.success) {
       return data({ errors: result.error.flatten().fieldErrors }, { status: 400 });
     }
-    await createReminder({
-      title: result.data.title,
-      dueAt: new Date(result.data.dueAt),
-      assigneeIds: result.data.assigneeIds,
-    });
+    await toggleReminder(request, result.data.reminderId);
     return { ok: true };
+  } catch (error) {
+    if (error instanceof ApiRequestError) {
+      return data({ errors: mapApiErrors(error.errors) }, { status: error.status });
+    }
+    throw error;
   }
-
-  const result = toggleReminderSchema.safeParse(Object.fromEntries(formData));
-  if (!result.success) {
-    return data({ errors: result.error.flatten().fieldErrors }, { status: 400 });
-  }
-  await toggleReminder(result.data.reminderId);
-  return { ok: true };
 }
 
 export default function Reminders({ loaderData }: Route.ComponentProps) {
