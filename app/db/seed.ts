@@ -73,14 +73,18 @@ async function main() {
     .set({ memberOrder: [mia.id, sam.id] })
     .where(eq(households.id, household.id));
 
+  // Same weekly/every-2-weeks × first/second-member split the backend's
+  // own per-chore-configuration migration backfilled the old A/B/C/D
+  // groups into — see my-home-backend/CLAUDE.md's Chore rotation section.
+  const ROTATION_ANCHOR = "2024-W01";
   await db.insert(chores).values([
-    { name: "Cuisine", rotationGroup: "A" },
-    { name: "Poubelles", rotationGroup: "A" },
-    { name: "Salle de bain", rotationGroup: "B" },
-    { name: "Surfaces", rotationGroup: "B" },
-    { name: "Sols", rotationGroup: "B" },
-    { name: "Draps", rotationGroup: "C" },
-    { name: "Couloir", rotationGroup: "D" },
+    { name: "Cuisine", frequencyWeeks: 1, assignmentMode: "ROTATING", anchorIsoWeek: ROTATION_ANCHOR, anchorUserId: mia.id },
+    { name: "Poubelles", frequencyWeeks: 1, assignmentMode: "ROTATING", anchorIsoWeek: ROTATION_ANCHOR, anchorUserId: mia.id },
+    { name: "Salle de bain", frequencyWeeks: 1, assignmentMode: "ROTATING", anchorIsoWeek: ROTATION_ANCHOR, anchorUserId: sam.id },
+    { name: "Surfaces", frequencyWeeks: 1, assignmentMode: "ROTATING", anchorIsoWeek: ROTATION_ANCHOR, anchorUserId: sam.id },
+    { name: "Sols", frequencyWeeks: 1, assignmentMode: "ROTATING", anchorIsoWeek: ROTATION_ANCHOR, anchorUserId: sam.id },
+    { name: "Draps", frequencyWeeks: 2, assignmentMode: "ROTATING", anchorIsoWeek: ROTATION_ANCHOR, anchorUserId: mia.id },
+    { name: "Couloir", frequencyWeeks: 2, assignmentMode: "ROTATING", anchorIsoWeek: ROTATION_ANCHOR, anchorUserId: sam.id },
   ]);
 
   const [groceries, costco] = await db

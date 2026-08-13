@@ -108,17 +108,24 @@ export const recipeIngredients = pgTable("recipe_ingredients", {
   ...timestamps,
 });
 
-export const rotationGroupEnum = pgEnum("rotation_group", [
-  "A",
-  "B",
-  "C",
-  "D",
+export const assignmentModeEnum = pgEnum("assignment_mode", [
+  "ROTATING",
+  "PINNED",
 ]);
 
 export const chores = pgTable("chores", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
-  rotationGroup: rotationGroupEnum("rotation_group").notNull(),
+  frequencyWeeks: integer("frequency_weeks").notNull(),
+  assignmentMode: assignmentModeEnum("assignment_mode").notNull(),
+  // The ISO week (YYYY-Www) this chore first occurred — every later
+  // occurrence is derived from this by the backend's rotation.service.ts.
+  anchorIsoWeek: text("anchor_iso_week").notNull(),
+  // Dual meaning by assignmentMode: for PINNED, the permanent assignee;
+  // for ROTATING, who was assigned on anchorIsoWeek (occurrence 0).
+  anchorUserId: uuid("anchor_user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "restrict" }),
   ...timestamps,
 });
 
@@ -218,7 +225,11 @@ export const recipeIngredientsRelations = relations(
   }),
 );
 
-export const choresRelations = relations(chores, ({ many }) => ({
+export const choresRelations = relations(chores, ({ one, many }) => ({
+  anchorUser: one(users, {
+    fields: [chores.anchorUserId],
+    references: [users.id],
+  }),
   completions: many(choreCompletions),
 }));
 
