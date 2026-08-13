@@ -210,7 +210,20 @@ this app's job is to hold that token safely and attach it to every API call.
   the JWT **locally** with `jsonwebtoken` against `JWT_PUBLIC_KEY` — no
   network round trip to the API just to know who's signed in. Redirects to
   `/login` if there's no token, the signature doesn't check out, or it's
-  expired
+  expired. It returns the `sub` claim as-is and does **not** check that the
+  user it names still exists — no DB or API call, on purpose. Trusting the
+  claim this way is only safe because nothing can currently invalidate a
+  user out from under a live token: there's no delete-user endpoint, no
+  invite revocation, and no session/token revocation of any kind (see
+  `my-home-backend/CLAUDE.md`'s Not in scope yet — refresh tokens / token
+  revocation / logout-everywhere, and household edit / remove-user /
+  invite revocation are both listed there). **If any of those ship, this
+  needs revisiting first** — a token outliving its user stops being
+  theoretical at that point. Confirmed concretely: deleting a user's row
+  while their session cookie is still live doesn't get them logged out:
+  `requireUser()` passes, and the first place that actually re-reads the
+  user (e.g. `GET /households/me`) throws instead of redirecting, so the
+  page fails with a 500 rather than a clean bounce to `/login`
 - **RS256, not a shared secret.** The backend signs with a private key this
   app never sees; `JWT_PUBLIC_KEY` is the matching RSA public key, copied
   from `my-home-backend`'s `JWT_PUBLIC_KEY` (see that repo's `.env.example`

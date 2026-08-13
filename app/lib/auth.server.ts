@@ -1,7 +1,6 @@
 import jwt from "jsonwebtoken";
 import { createCookieSessionStorage, redirect } from "react-router";
 
-import { getUserById } from "~/db/queries/users.server";
 import type { User } from "~/db/schema";
 
 import { ApiRequestError, apiFetch } from "./api.server";
@@ -137,23 +136,20 @@ export async function getSessionUserId(request: Request): Promise<string | null>
   }
 }
 
+export type SessionUser = { id: string };
+
 /**
- * Redirects to /login if there's no valid, unexpired JWT, or the session's
- * user no longer exists. The token names a user id only — this app still
- * reads the full user row via Drizzle (same physical database the API
- * writes to; only the Shopping section's own data goes through the API in
- * this step, not user lookups for the sidebar).
+ * Redirects to /login if there's no valid, unexpired JWT. Trusts the JWT's
+ * `sub` as-is — no DB or API call to confirm the user it names still
+ * exists (see CLAUDE.md's Authentication section for the tradeoff this
+ * accepts, and when it needs revisiting).
  */
-export async function requireUser(request: Request): Promise<User> {
+export async function requireUser(request: Request): Promise<SessionUser> {
   const userId = await getSessionUserId(request);
   if (!userId) {
     throw redirect("/login");
   }
-  const user = await getUserById(userId);
-  if (!user) {
-    throw redirect("/login");
-  }
-  return user;
+  return { id: userId };
 }
 
 export async function destroySession(request: Request): Promise<Response> {
