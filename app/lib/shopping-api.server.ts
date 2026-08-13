@@ -80,3 +80,25 @@ export async function toggleShoppingItem(request: Request, itemId: string): Prom
     accessToken,
   });
 }
+
+export type AddIngredientsResult = {
+  listId: string;
+  added: number;
+  merged: number;
+};
+
+export async function addIngredientsToList(
+  request: Request,
+  params: { recipeId: string; listId?: string; newListName?: string },
+): Promise<AddIngredientsResult> {
+  const accessToken = await getAccessToken(request);
+  return apiFetch<AddIngredientsResult>("/shopping-lists/add-ingredients", {
+    method: "POST",
+    accessToken,
+    body: {
+      recipeId: params.recipeId,
+      listId: params.listId,
+      newListName: params.newListName,
+    },
+  });
+}

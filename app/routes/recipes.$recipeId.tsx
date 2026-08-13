@@ -2,9 +2,9 @@ import { data, redirect, useFetcher } from "react-router";
 
 import { PageHeader } from "~/components/layout/PageHeader";
 import { Button, cardClassName } from "~/components/ui";
-import { getRecipeDetail } from "~/db/queries/recipes.server";
-import { addIngredientsToList } from "~/lib/ingredients.server";
-import { getShoppingLists } from "~/lib/shopping-api.server";
+import { ApiRequestError, mapApiErrors } from "~/lib/api.server";
+import { getRecipeDetail } from "~/lib/recipes-api.server";
+import { addIngredientsToList, getShoppingLists } from "~/lib/shopping-api.server";
 import { addAsNewListSchema, addToExistingListSchema } from "~/lib/validation";
 
 import type { Route } from "./+types/recipes.$recipeId";
@@ -16,7 +16,7 @@ export function meta({ loaderData }: Route.MetaArgs) {
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {
-  const detail = await getRecipeDetail(params.recipeId);
+  const detail = await getRecipeDetail(request, params.recipeId);
   if (!detail) {
     throw data("Introuvable", { status: 404 });
   }
@@ -28,30 +28,39 @@ export async function action({ request, params }: Route.ActionArgs) {
   const formData = await request.formData();
   const intent = formData.get("intent");
 
-  if (intent === "addToExistingList") {
-    const result = addToExistingListSchema.safeParse(Object.fromEntries(formData));
-    if (!result.success) {
-      return data({ errors: result.error.flatten().fieldErrors }, { status: 400 });
+  try {
+    if (intent === "addToExistingList") {
+      const result = addToExistingListSchema.safeParse(Object.fromEntries(formData));
+      if (!result.success) {
+        return data({ errors: result.error.flatten().fieldErrors }, { status: 400 });
+      }
+      const outcome = await addIngredientsToList(request, {
+        recipeId: params.recipeId,
+        listId: result.data.listId,
+      });
+      const lists = await getShoppingLists(request);
+      const listName = lists.find((l) => l.id === result.data.listId)?.name ?? "la liste";
+      return { outcome, listName };
     }
-    const outcome = await addIngredientsToList(params.recipeId, {
-      listId: result.data.listId,
-    });
-    const lists = await getShoppingLists(request);
-    const listName = lists.find((l) => l.id === result.data.listId)?.name ?? "la liste";
-    return { outcome, listName };
-  }
 
-  if (intent === "addAsNewList") {
-    const result = addAsNewListSchema.safeParse(Object.fromEntries(formData));
-    if (!result.success) {
-      return data({ errors: result.error.flatten().fieldErrors }, { status: 400 });
+    if (intent === "addAsNewList") {
+      const result = addAsNewListSchema.safeParse(Object.fromEntries(formData));
+      if (!result.success) {
+        return data({ errors: result.error.flatten().fieldErrors }, { status: 400 });
+      }
+      const detail = await getRecipeDetail(request, params.recipeId);
+      if (!detail) throw data("Introuvable", { status: 404 });
+      const outcome = await addIngredientsToList(request, {
+        recipeId: params.recipeId,
+        newListName: detail.recipe.name,
+      });
+      return redirect(`/shopping/${outcome.listId}`);
     }
-    const detail = await getRecipeDetail(params.recipeId);
-    if (!detail) throw data("Introuvable", { status: 404 });
-    const outcome = await addIngredientsToList(params.recipeId, {
-      newListName: detail.recipe.name,
-    });
-    return redirect(`/shopping/${outcome.listId}`);
+  } catch (error) {
+    if (error instanceof ApiRequestError) {
+      return data({ errors: mapApiErrors(error.errors) }, { status: error.status });
+    }
+    throw error;
   }
 
   throw data("Intention inconnue", { status: 400 });

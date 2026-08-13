@@ -1,7 +1,7 @@
 import { Link } from "react-router";
 
 import { cardClassName } from "~/components/ui";
-import type { RecipePreview } from "~/db/queries/recipes.server";
+import type { RecipePreview } from "~/lib/recipes-api.server";
 
 export function RecipeCard({ recipe }: { recipe: RecipePreview }) {
   return (

@@ -1,6 +1,6 @@
 import { PageHeader } from "~/components/layout/PageHeader";
 import { RecipeCard } from "~/components/recipes/RecipeCard";
-import { getRecipes } from "~/db/queries/recipes.server";
+import { getRecipes } from "~/lib/recipes-api.server";
 
 import type { Route } from "./+types/recipes";
 
@@ -8,8 +8,8 @@ export function meta() {
   return [{ title: "Recettes · Hearth" }];
 }
 
-export async function loader() {
-  const recipes = await getRecipes();
+export async function loader({ request }: Route.LoaderArgs) {
+  const recipes = await getRecipes(request);
   return { recipes };
 }
 
