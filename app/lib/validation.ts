@@ -16,7 +16,6 @@ export const registerSchema = z
   .object({
     token: z.string().min(1, "Lien d'invitation invalide"),
     name: z.string().trim().min(1, "Le nom est requis"),
-    role: z.string().trim().min(1, "Le rôle est requis"),
     password: z.string().min(8, "Le mot de passe doit contenir au moins 8 caractères"),
     confirmPassword: z.string().min(1, "La confirmation est requise"),
   })

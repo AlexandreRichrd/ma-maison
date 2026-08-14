@@ -34,7 +34,6 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   name: text("name").notNull(),
-  role: text("role").notNull(),
   avatarKey: text("avatar_key").notNull(),
   // Null until the /activate link is clicked. Login is refused until then.
   emailVerifiedAt: timestamp("email_verified_at", { withTimezone: true }),

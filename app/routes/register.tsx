@@ -45,7 +45,6 @@ export async function action({ request }: Route.ActionArgs) {
 export default function Register({ loaderData, actionData }: Route.ComponentProps) {
   const errors = actionData && "errors" in actionData ? actionData.errors : undefined;
   const nameErrors = errors && "name" in errors ? errors.name : undefined;
-  const roleErrors = errors && "role" in errors ? errors.role : undefined;
   const passwordErrors = errors && "password" in errors ? errors.password : undefined;
   const confirmErrors = errors && "confirmPassword" in errors ? errors.confirmPassword : undefined;
   // "token" covers the API's invite_invalid/required codes (the hidden
@@ -81,12 +80,6 @@ export default function Register({ loaderData, actionData }: Route.ComponentProp
             {nameErrors && (
               <p className="text-sm font-medium text-accent" role="alert">
                 {nameErrors[0]}
-              </p>
-            )}
-            <Input label="Rôle" name="role" placeholder="Parent, Partenaire…" required />
-            {roleErrors && (
-              <p className="text-sm font-medium text-accent" role="alert">
-                {roleErrors[0]}
               </p>
             )}
             <Input

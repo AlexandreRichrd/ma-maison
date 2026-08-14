@@ -107,7 +107,7 @@ edit or delete yet. Each assignee shows as a chip colored the same as
 that user's avatar elsewhere in the UI.
 
 ### Household
-User list with role, plus `+ Inviter un membre`: any signed-in user can send
+User list (name and avatar), plus `+ Inviter un membre`: any signed-in user can send
 an invite email to a new address (see Authentication). The **Edit** button
 stays a **static placeholder** — present in the UI, intentionally not wired.
 Do not implement it without being asked; editing/removing a user is still out

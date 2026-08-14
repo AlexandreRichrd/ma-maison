@@ -5,7 +5,6 @@ export type HouseholdMemberDto = {
   id: string;
   name: string;
   avatarKey: string;
-  role: string;
 };
 
 type ChoreDto = {

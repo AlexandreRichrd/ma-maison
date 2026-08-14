@@ -10,7 +10,6 @@ export type HouseholdMember = {
   id: string;
   name: string;
   avatarKey: string;
-  role: string;
 };
 
 type PublicUserDto = HouseholdMember & {
@@ -37,7 +36,7 @@ export async function getOrderedUsers(request: Request): Promise<HouseholdMember
   return memberOrder
     .map((id) => byId.get(id))
     .filter((user): user is PublicUserDto => user != null)
-    .map(({ id, name, avatarKey, role }) => ({ id, name, avatarKey, role }));
+    .map(({ id, name, avatarKey }) => ({ id, name, avatarKey }));
 }
 
 export async function createInvite(request: Request, email: string): Promise<void> {

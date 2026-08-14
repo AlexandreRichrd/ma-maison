@@ -103,7 +103,6 @@ export default function Household({ loaderData }: Route.ComponentProps) {
             </div>
             <div className="flex-1">
               <div className="text-[15px] font-semibold">{user.name}</div>
-              <div className="text-sm font-medium text-muted">{user.role}</div>
             </div>
             {/* Static placeholder — intentionally not wired, per CLAUDE.md. */}
             <Button variant="secondary" disabled>

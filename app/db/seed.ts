@@ -50,7 +50,6 @@ async function main() {
       {
         householdId: household.id,
         name: "Mia",
-        role: "Parent",
         avatarKey: "mia",
         email: "mia@example.com",
         passwordHash,
@@ -59,7 +58,6 @@ async function main() {
       {
         householdId: household.id,
         name: "Sam",
-        role: "Partenaire",
         avatarKey: "sam",
         email: "sam@example.com",
         passwordHash,

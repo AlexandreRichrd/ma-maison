@@ -62,7 +62,6 @@ export async function login(email: string, password: string): Promise<LoginResul
 export type RegisterInput = {
   token: string;
   name: string;
-  role: string;
   password: string;
   confirmPassword: string;
 };
