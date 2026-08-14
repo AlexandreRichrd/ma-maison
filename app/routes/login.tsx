@@ -1,4 +1,4 @@
-import { data, Form, redirect } from "react-router";
+import { data, Form, Link, redirect } from "react-router";
 
 import { Button, Card, Input } from "~/components/ui";
 import { createUserSession, getSessionUserId, login } from "~/lib/auth.server";
@@ -14,8 +14,10 @@ export async function loader({ request }: Route.LoaderArgs) {
   if (await getSessionUserId(request)) {
     throw redirect("/");
   }
-  const activated = new URL(request.url).searchParams.get("activated") === "1";
-  return { activated };
+  const params = new URL(request.url).searchParams;
+  const activated = params.get("activated") === "1";
+  const reset = params.get("reset") === "1";
+  return { activated, reset };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -57,6 +59,11 @@ export default function Login({ loaderData, actionData }: Route.ComponentProps) 
             Compte activé, vous pouvez vous connecter.
           </p>
         )}
+        {loaderData.reset && (
+          <p className="mb-3 text-sm font-medium text-foreground" role="status">
+            Mot de passe réinitialisé, vous pouvez vous connecter.
+          </p>
+        )}
         <Form method="post" className="flex flex-col gap-3">
           <Input
             label="Email"
@@ -83,6 +90,9 @@ export default function Login({ loaderData, actionData }: Route.ComponentProps) 
               {passwordError}
             </p>
           )}
+          <Link to="/forgot-password" className="text-sm font-semibold">
+            Mot de passe oublié ?
+          </Link>
           {generalError && (
             <p className="text-sm font-medium text-accent" role="alert">
               {generalError}

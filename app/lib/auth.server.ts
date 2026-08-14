@@ -85,6 +85,34 @@ export async function activateAccount(token: string): Promise<{ ok: true }> {
 }
 
 /**
+ * Delegates to the API's POST /auth/forgot-password, which always returns
+ * { ok: true } whether or not the email has an account — never reveal
+ * which. Only a genuine request failure (network error, rate limit) throws.
+ */
+export async function forgotPassword(email: string): Promise<{ ok: true }> {
+  return apiFetch<{ ok: true }>("/auth/forgot-password", {
+    method: "POST",
+    body: { email },
+  });
+}
+
+export type ResetPasswordInput = {
+  token: string;
+  password: string;
+  confirmPassword: string;
+};
+
+/** Delegates to the API's POST /auth/reset-password. */
+export async function resetPassword(
+  input: ResetPasswordInput,
+): Promise<{ ok: true }> {
+  return apiFetch<{ ok: true }>("/auth/reset-password", {
+    method: "POST",
+    body: input,
+  });
+}
+
+/**
  * Which email an invite token is for, and whether it's still usable — read-
  * only, doesn't consume the invite. Null for a missing, expired, or
  * already-accepted token (the API's GET /invites/:token 404s all three the

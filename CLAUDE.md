@@ -174,6 +174,8 @@ app/
     household.tsx
     register.tsx           # public, requires ?token= from an invite
     activate.tsx           # public, consumes the emailed activation link
+    forgot-password.tsx    # public, email -> same confirmation either way
+    reset-password.tsx     # public, requires ?token= from a reset email
   components/
     ui/                  # Button, Card, Checkbox, Modal, Input, Select, Badge
     layout/              # Sidebar, PageHeader
@@ -280,8 +282,8 @@ this app's job is to hold that token safely and attach it to every API call.
   anything — only the backend issues tokens
 - No refresh token exists yet (see backend's Authentication) — a `401` means
   the session is over; clear the cookie and redirect, don't try to recover it
-- Still out of scope: OAuth, password reset. Sign-up is not open/public —
-  the only path is the invite flow below
+- Still out of scope: OAuth. Sign-up is not open/public — the only path is
+  the invite flow below
 
 ### Invite / register / activate
 
@@ -299,6 +301,29 @@ the API owns tokens, expiry, and persistence (see
 3. `/activate?token=…` is public. Its loader calls the API's `/auth/activate`
    and redirects to `/login?activated=1` on success. Login is refused until
    this step happens (enforced by the API, not here)
+
+### Forgot / reset password
+
+Recovery, unlike sign-up, needs no invite — any existing account can request
+one. This app renders the flow; the API owns tokens, expiry, and the
+never-reveal-which-emails-exist behavior (see `my-home-backend/CLAUDE.md`):
+
+1. **Login** links to `/forgot-password`, a public route with just an email
+   field. Its action posts to the API's `/auth/forgot-password` and shows
+   the *same* confirmation message regardless of outcome — whether the
+   email has an account, doesn't, or the request was rate-limited. Only a
+   malformed address (a client-side/DTO validation error) gets its own
+   field error; every other case collapses to the same confirmation, so
+   this app never becomes the thing that leaks account existence even
+   though the API itself doesn't
+2. `/reset-password?token=…` is a public route with new-password and
+   confirm fields. There's no token-preview endpoint the way `/register`
+   has via `GET /invites/:token` — the loader only checks the token is
+   *present* in the URL before rendering the form; the API is what actually
+   validates it, on submit. A missing, expired, or already-consumed token
+   surfaces as a general form error (`reset_invalid`), same pattern as
+   `/register`'s handling of `invite_invalid`. On success it redirects to
+   `/login?reset=1`, mirroring `/activate`'s `?activated=1`
 
 ## UI conventions
 
@@ -431,8 +456,8 @@ Do not build these unless explicitly asked:
 - Recipe creation and editing — the app reads recipes; seed them for now
 - Servings scaling of ingredient quantities
 - Store tags on shopping items
-- Push or in-app notifications (transactional invite/activation email is
-  the only mail the app sends)
+- Push or in-app notifications (transactional invite/activation/password-reset
+  email is the only mail the app sends)
 - Multi-tenancy or third-party household sign-up
 - Row-Level Security
 - React Native or any native mobile app
@@ -440,7 +465,7 @@ Do not build these unless explicitly asked:
   to Postgres directly from this repo — see Project
 - Store distribution — TWA, Capacitor, or otherwise
 - Billing, advertising
-- OAuth, password reset (see Authentication)
+- OAuth (see Authentication)
 
 ## When unsure
 

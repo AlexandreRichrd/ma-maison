@@ -66,6 +66,20 @@ export const emailVerifications = pgTable("email_verifications", {
   ...timestamps,
 });
 
+// Separate table from emailVerifications, not the same table with a type
+// discriminator — see my-home-backend/CLAUDE.md's Authentication section
+// (Forgot / reset password) for why.
+export const passwordResets = pgTable("password_resets", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  token: text("token").notNull().unique(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  consumedAt: timestamp("consumed_at", { withTimezone: true }),
+  ...timestamps,
+});
+
 export const shoppingLists = pgTable("shopping_lists", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
@@ -172,6 +186,7 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   choreCompletions: many(choreCompletions),
   sentInvites: many(invites),
   emailVerifications: many(emailVerifications),
+  passwordResets: many(passwordResets),
 }));
 
 export const invitesRelations = relations(invites, ({ one }) => ({
@@ -190,6 +205,16 @@ export const emailVerificationsRelations = relations(
   ({ one }) => ({
     user: one(users, {
       fields: [emailVerifications.userId],
+      references: [users.id],
+    }),
+  }),
+);
+
+export const passwordResetsRelations = relations(
+  passwordResets,
+  ({ one }) => ({
+    user: one(users, {
+      fields: [passwordResets.userId],
       references: [users.id],
     }),
   }),
@@ -257,3 +282,4 @@ export type ChoreCompletion = typeof choreCompletions.$inferSelect;
 export type Reminder = typeof reminders.$inferSelect;
 export type Invite = typeof invites.$inferSelect;
 export type EmailVerification = typeof emailVerifications.$inferSelect;
+export type PasswordReset = typeof passwordResets.$inferSelect;

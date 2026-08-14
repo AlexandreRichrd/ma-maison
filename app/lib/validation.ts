@@ -24,6 +24,21 @@ export const registerSchema = z
     path: ["confirmPassword"],
   });
 
+export const forgotPasswordSchema = z.object({
+  email: z.email("Adresse email invalide").trim(),
+});
+
+export const resetPasswordSchema = z
+  .object({
+    token: z.string().min(1, "Lien de réinitialisation invalide"),
+    password: z.string().min(8, "Le mot de passe doit contenir au moins 8 caractères"),
+    confirmPassword: z.string().min(1, "La confirmation est requise"),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Les mots de passe ne correspondent pas",
+    path: ["confirmPassword"],
+  });
+
 export const newListSchema = z.object({
   intent: z.literal("newList"),
   name: z.string().trim().min(1, "Le nom de la liste est requis"),

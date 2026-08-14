@@ -69,6 +69,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   email_taken: "Un compte existe déjà pour cette adresse",
   invite_invalid: "Ce lien d'invitation est invalide ou a expiré",
   verification_invalid: "Ce lien d'activation est invalide ou a expiré",
+  reset_invalid: "Ce lien de réinitialisation est invalide ou a expiré",
   not_found: "Introuvable",
   invalid_target: "Cible invalide",
   unauthenticated: "Merci de vous reconnecter",
