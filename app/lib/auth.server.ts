@@ -1,13 +1,11 @@
 import jwt from "jsonwebtoken";
-import { createCookieSessionStorage, redirect } from "react-router";
+import { redirect } from "react-router";
 
 import type { User } from "~/db/schema";
 
 import { ApiRequestError, apiFetch } from "./api.server";
+import { sessionStorage } from "./session.server";
 
-if (!process.env.SESSION_SECRET) {
-  throw new Error("SESSION_SECRET is not set");
-}
 if (!process.env.JWT_PUBLIC_KEY) {
   throw new Error("JWT_PUBLIC_KEY is not set");
 }
@@ -16,17 +14,6 @@ if (!process.env.JWT_PUBLIC_KEY) {
 // — see that repo's .env.example for why (Docker Compose / VPS shell
 // environments don't reliably carry real newlines in a variable's value).
 const JWT_PUBLIC_KEY = process.env.JWT_PUBLIC_KEY.replace(/\\n/g, "\n");
-
-const sessionStorage = createCookieSessionStorage({
-  cookie: {
-    name: "__session",
-    httpOnly: true,
-    sameSite: "lax",
-    secrets: [process.env.SESSION_SECRET],
-    secure: process.env.NODE_ENV === "production",
-    maxAge: 60 * 60 * 24 * 30,
-  },
-});
 
 export type PublicUser = Omit<User, "passwordHash">;
 

@@ -1,3 +1,7 @@
+import { redirect } from "react-router";
+
+import { sessionStorage } from "./session.server";
+
 const API_URL = process.env.API_URL;
 if (!API_URL) {
   throw new Error("API_URL is not set");
@@ -32,6 +36,28 @@ export async function apiFetch<T>(
 
   if (response.status === 204) {
     return undefined as T;
+  }
+
+  // A 401 on a call that carried a JWT means the session is dead — the
+  // token passed requireUser()'s local signature/expiry check (see
+  // auth.server.ts), but the API rejected it for real, e.g. the user it
+  // names was deleted after the token was issued (see CLAUDE.md's
+  // Authentication section). Every authenticated endpoint's 401 means
+  // exactly this, with no exception that should be shown inline instead —
+  // clear the cookie and bounce to /login rather than let the error
+  // surface as a raw ApiRequestError (which is what turned this into a
+  // 500 "oups" page before).
+  //
+  // A 401 with no accessToken attached is a different thing entirely — a
+  // public endpoint's ordinary rejection (wrong password on /auth/login,
+  // an unverified account), which its caller already catches as an
+  // ApiRequestError. Redirecting for that case would swallow those errors
+  // and silently bounce the login page back to itself.
+  if (response.status === 401 && options.accessToken) {
+    const session = await sessionStorage.getSession();
+    throw redirect("/login", {
+      headers: { "Set-Cookie": await sessionStorage.destroySession(session) },
+    });
   }
 
   const json: unknown = await response.json();

@@ -186,8 +186,12 @@ app/
     reminders/
     household/            # ChoresSection.tsx — chore admin CRUD
   lib/
-    api.server.ts         # fetch wrapper: base URL, JWT header, error mapping
-    auth.server.ts         # JWT cookie storage, requireUser(), login/logout
+    api.server.ts         # fetch wrapper: base URL, JWT header, error mapping,
+                            #   401 -> clear session + redirect to /login
+    auth.server.ts         # requireUser(), login/logout
+    session.server.ts      # cookie session storage — split out of auth.server.ts
+                            #   so api.server.ts can clear it without a
+                            #   circular import between the two
     week.ts                # ISO week parsing and navigation (display only)
     validation.ts          # form-side validation that mirrors API error codes
     chores-api.server.ts   # chore config CRUD client
@@ -218,7 +222,15 @@ app/
 - Every action carries an `intent` field so one route can host several mutations
 - A `401` from the API means the JWT is invalid or expired: clear the cookie
   and redirect to `/login`. Don't try to silently retry or refresh — there is
-  no refresh token (see Authentication)
+  no refresh token (see Authentication). Enforced once, centrally, in
+  `apiFetch` itself — not repeated per loader/action — so it covers every
+  authenticated call (reads and writes, top-level navigations and
+  `useFetcher` submissions alike) for free. Gated on whether *this specific
+  call* carried an `accessToken`: a 401 from a public endpoint (wrong
+  password on `/auth/login`, an unverified account) is an ordinary
+  rejection its caller already handles as an `ApiRequestError` and must
+  not be swallowed into a redirect — only a 401 on a call that attached a
+  bearer token means the session itself is dead
 
 ## Database
 
@@ -266,10 +278,18 @@ this app's job is to hold that token safely and attach it to every API call.
   invite revocation are both listed there). **If any of those ship, this
   needs revisiting first** — a token outliving its user stops being
   theoretical at that point. Confirmed concretely: deleting a user's row
-  while their session cookie is still live doesn't get them logged out:
-  `requireUser()` passes, and the first place that actually re-reads the
-  user (e.g. `GET /households/me`) throws instead of redirecting, so the
-  page fails with a 500 rather than a clean bounce to `/login`
+  while their session cookie is still live doesn't get them logged out by
+  `requireUser()` itself — it still passes. What used to happen next was
+  worse than it needed to be: the first place that actually re-reads the
+  user (e.g. `GET /households/me`) 401'd, nothing caught it, and the page
+  500'd instead of redirecting. `apiFetch` now catches exactly this (see
+  Data flow rules) — a 401 on a call that carried a token clears the
+  cookie and redirects to `/login` — so the practical window between "user
+  deleted" and "user logged out" is one request, not a crash. The
+  underlying tradeoff is unchanged, though: `requireUser()` still trusts
+  the claim without a DB round trip, so anything a loader does *before*
+  its first authenticated API call in that same request still runs
+  against a stale identity
 - **RS256, not a shared secret.** The backend signs with a private key this
   app never sees; `JWT_PUBLIC_KEY` is the matching RSA public key, copied
   from `my-home-backend`'s `JWT_PUBLIC_KEY` (see that repo's `.env.example`
