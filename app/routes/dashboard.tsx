@@ -29,7 +29,8 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export default function Dashboard({ loaderData }: Route.ComponentProps) {
-  const { dueReminders, shoppingLists, weekChores, users, currentUserId } = loaderData;
+  const { dueReminders, shoppingLists, weekChores, indoorClimate, users, currentUserId } =
+    loaderData;
   const currentUser = users.find((user) => user.id === currentUserId);
   const orderedWeekChores = withCurrentUserFirst(weekChores, currentUserId);
 
@@ -43,7 +44,7 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
       </p>
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-        <HomeClimateWidget />
+        <HomeClimateWidget indoor={indoorClimate} />
         <ReminderWidget reminders={dueReminders} users={users} />
         <ShoppingWidget lists={shoppingLists} />
         <CleaningWidget
