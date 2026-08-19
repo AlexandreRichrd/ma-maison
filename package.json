@@ -19,6 +19,7 @@
     "@node-rs/argon2": "^2.0.2",
     "@react-router/node": "^8",
     "@react-router/serve": "^8",
+    "cookie": "^2.0.1",
     "date-fns": "^4.4.0",
     "drizzle-orm": "^0.45.2",
     "isbot": "^5.1.36",

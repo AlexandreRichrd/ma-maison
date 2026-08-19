@@ -4,7 +4,7 @@ import { redirect } from "react-router";
 import type { User } from "~/db/schema";
 
 import { ApiRequestError, apiFetch } from "./api.server";
-import { accessTokenCookie, sessionStorage } from "./session.server";
+import { clearAccessTokenCookie, serializeAccessTokenCookie, sessionStorage } from "./session.server";
 
 if (!process.env.JWT_PUBLIC_KEY) {
   throw new Error("JWT_PUBLIC_KEY is not set");
@@ -117,6 +117,14 @@ export async function getInviteEmail(token: string): Promise<string | null> {
   }
 }
 
+// The only place a JWT gets written into a cookie — currently only called
+// from login, since no refresh flow exists yet (see my-home-backend/
+// CLAUDE.md's Authentication section). If one is ever added, it must issue
+// its new token through this function rather than setting __session
+// directly: __session and access_token have to change together, or REST
+// keeps working off __session while the climate socket's handshake starts
+// silently rejecting a stale access_token (see session.server.ts's
+// accessTokenCookie comment).
 export async function createUserSession(
   request: Request,
   accessToken: string,
@@ -126,7 +134,7 @@ export async function createUserSession(
   session.set("accessToken", accessToken);
   const headers = new Headers();
   headers.append("Set-Cookie", await sessionStorage.commitSession(session));
-  headers.append("Set-Cookie", await accessTokenCookie.serialize(accessToken));
+  headers.append("Set-Cookie", serializeAccessTokenCookie(accessToken));
   return redirect(redirectTo, { headers });
 }
 
@@ -171,6 +179,6 @@ export async function destroySession(request: Request): Promise<Response> {
   const session = await sessionStorage.getSession(request.headers.get("Cookie"));
   const headers = new Headers();
   headers.append("Set-Cookie", await sessionStorage.destroySession(session));
-  headers.append("Set-Cookie", await accessTokenCookie.serialize("", { maxAge: 0 }));
+  headers.append("Set-Cookie", clearAccessTokenCookie());
   return redirect("/login", { headers });
 }

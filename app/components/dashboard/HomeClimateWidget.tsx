@@ -59,6 +59,14 @@ export function HomeClimateWidget({ indoor: loaderIndoor }: { indoor: IndoorClim
         // socket pushes only cover what happened while connected.
         revalidateRef.current();
       },
+      onServerDisconnect: () => {
+        // See connectClimateSocket's comment: the socket won't reconnect
+        // itself here, so this is the only recovery path. Revalidating
+        // hits the API for real — if the access token expired (the only
+        // thing that triggers this today), that 401s and apiFetch's
+        // existing handler clears the cookies and redirects to /login.
+        revalidateRef.current();
+      },
     });
     return () => {
       socket.disconnect();
