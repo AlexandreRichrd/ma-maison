@@ -1,6 +1,6 @@
 import { redirect } from "react-router";
 
-import { sessionStorage } from "./session.server";
+import { accessTokenCookie, sessionStorage } from "./session.server";
 
 const API_URL = process.env.API_URL;
 if (!API_URL) {
@@ -55,9 +55,12 @@ export async function apiFetch<T>(
   // and silently bounce the login page back to itself.
   if (response.status === 401 && options.accessToken) {
     const session = await sessionStorage.getSession();
-    throw redirect("/login", {
-      headers: { "Set-Cookie": await sessionStorage.destroySession(session) },
-    });
+    const headers = new Headers();
+    headers.append("Set-Cookie", await sessionStorage.destroySession(session));
+    // Cleared alongside __session — see session.server.ts's accessTokenCookie
+    // comment for why the two must never diverge.
+    headers.append("Set-Cookie", await accessTokenCookie.serialize("", { maxAge: 0 }));
+    throw redirect("/login", { headers });
   }
 
   const json: unknown = await response.json();

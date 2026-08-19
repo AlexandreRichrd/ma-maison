@@ -4,7 +4,7 @@ import { redirect } from "react-router";
 import type { User } from "~/db/schema";
 
 import { ApiRequestError, apiFetch } from "./api.server";
-import { sessionStorage } from "./session.server";
+import { accessTokenCookie, sessionStorage } from "./session.server";
 
 if (!process.env.JWT_PUBLIC_KEY) {
   throw new Error("JWT_PUBLIC_KEY is not set");
@@ -124,9 +124,10 @@ export async function createUserSession(
 ): Promise<Response> {
   const session = await sessionStorage.getSession(request.headers.get("Cookie"));
   session.set("accessToken", accessToken);
-  return redirect(redirectTo, {
-    headers: { "Set-Cookie": await sessionStorage.commitSession(session) },
-  });
+  const headers = new Headers();
+  headers.append("Set-Cookie", await sessionStorage.commitSession(session));
+  headers.append("Set-Cookie", await accessTokenCookie.serialize(accessToken));
+  return redirect(redirectTo, { headers });
 }
 
 export async function getAccessToken(request: Request): Promise<string | null> {
@@ -168,7 +169,8 @@ export async function requireUser(request: Request): Promise<SessionUser> {
 
 export async function destroySession(request: Request): Promise<Response> {
   const session = await sessionStorage.getSession(request.headers.get("Cookie"));
-  return redirect("/login", {
-    headers: { "Set-Cookie": await sessionStorage.destroySession(session) },
-  });
+  const headers = new Headers();
+  headers.append("Set-Cookie", await sessionStorage.destroySession(session));
+  headers.append("Set-Cookie", await accessTokenCookie.serialize("", { maxAge: 0 }));
+  return redirect("/login", { headers });
 }
