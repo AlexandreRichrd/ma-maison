@@ -61,8 +61,11 @@ export function ChoreItem({ chore }: { chore: ChoreView }) {
               onChange={(event) => fetcher.submit(event.currentTarget.form)}
               className="size-[18px] shrink-0 accent-accent"
             />
+            {/* Wraps rather than truncating — the enclosing min-w-0 flex
+                chain (this label, its fetcher.Form, ChoreColumn's grid
+                cell) keeps a long name from ever widening the column. */}
             <span
-              className={`flex-1 truncate text-sm font-medium ${done ? "text-muted line-through" : ""}`}
+              className={`min-w-0 flex-1 text-sm font-medium ${done ? "text-muted line-through" : ""}`}
             >
               {chore.name}
             </span>

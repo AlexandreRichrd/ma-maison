@@ -11,6 +11,12 @@ import { ChoreColumn } from "./ChoreColumn";
  * forces a full remount (replaying the fade-in animation) whenever the
  * selected day crosses into a different week, so that transition is never
  * silent — see my-home-backend/CLAUDE.md's Chore rotation section.
+ *
+ * This block sits above the day navigator, so its height feeds directly
+ * into where the navigator's arrows land — ChoreColumn's own min-height
+ * floor (not repeated here) is what keeps a short week from collapsing
+ * this block and shifting the navigator up. It's a floor, not a cap: an
+ * unusually long week can still push the navigator down.
  */
 export function WeeklyBlock({
   isoWeek,

@@ -53,6 +53,31 @@ test("renders an explicit empty state for a day before every chore's anchor", as
   await expect(page.getByText("Aucune corvée ce jour-là.")).toHaveCount(2);
 });
 
+test("the next-day button never moves, across a week boundary and a single-to-double-digit day", async ({
+  page,
+}) => {
+  // 2024-01-01 is a Monday (single-digit day, start of 2024-W01).
+  // Clicking forward 10 times lands on 2024-01-11 (double-digit day),
+  // crossing the 2024-01-08 week boundary along the way.
+  await page.goto("/cleaning?date=2024-01-01");
+
+  const nextButton = page.getByRole("link", { name: "Jour suivant" });
+  const referenceBox = await nextButton.boundingBox();
+  expect(referenceBox).not.toBeNull();
+
+  let previousDate = "2024-01-01";
+  for (let i = 0; i < 10; i++) {
+    await nextButton.click();
+    await page.waitForURL((url) => url.searchParams.get("date") !== previousDate);
+    previousDate = new URL(page.url()).searchParams.get("date") ?? "";
+
+    const box = await nextButton.boundingBox();
+    expect(box).toEqual(referenceBox);
+  }
+
+  expect(previousDate).toBe("2024-01-11");
+});
+
 test("expanding a chore with subtasks ticks/unticks the parent as subtasks change", async ({
   page,
 }) => {
