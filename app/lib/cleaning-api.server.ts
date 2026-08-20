@@ -7,68 +7,134 @@ export type HouseholdMemberDto = {
   avatarKey: string;
 };
 
-type ChoreDto = {
+type FrequencyUnit = "DAY" | "WEEK";
+
+type SubtaskDto = {
   id: string;
-  name: string;
-  frequencyWeeks: number;
+  label: string;
   done: boolean;
 };
 
-type UserWeekChoresResponse = {
+type ChoreDto = {
+  id: string;
+  name: string;
+  frequencyUnit: FrequencyUnit;
+  frequencyValue: number;
+  occurrenceDate: string;
+  done: boolean;
+  subtasks: SubtaskDto[];
+};
+
+type UserChoresResponse = {
   user: HouseholdMemberDto;
   chores: ChoreDto[];
+};
+
+export type SubtaskView = {
+  id: string;
+  label: string;
+  done: boolean;
 };
 
 export type ChoreView = {
   id: string;
   name: string;
   tag: string;
+  occurrenceDate: string;
   done: boolean;
+  subtasks: SubtaskView[];
 };
 
-export type UserWeekChores = {
+export type UserChores = {
   user: HouseholdMemberDto;
   chores: ChoreView[];
 };
 
-// The API returns a machine-readable frequencyWeeks, not display copy (see
-// my-home-backend/CLAUDE.md's API surface section) — this app owns the
-// French label, same convention as api.server.ts's ERROR_MESSAGES.
-function frequencyLabel(frequencyWeeks: number): string {
-  return frequencyWeeks === 1 ? "Chaque semaine" : `Toutes les ${frequencyWeeks} semaines`;
+// The API returns machine-readable frequencyUnit/frequencyValue, not
+// display copy (see my-home-backend/CLAUDE.md's API surface section) —
+// this app owns the French label.
+function frequencyLabel(unit: FrequencyUnit, value: number): string {
+  if (unit === "DAY") {
+    return value === 1 ? "Chaque jour" : `Tous les ${value} jours`;
+  }
+  return value === 1 ? "Chaque semaine" : `Toutes les ${value} semaines`;
 }
 
-/** Always in stable households.member_order order — see cleaning-order.ts for
- * "signed-in user first" display reordering, which happens in the caller. */
+function toChoreView(chore: ChoreDto): ChoreView {
+  return {
+    id: chore.id,
+    name: chore.name,
+    tag: frequencyLabel(chore.frequencyUnit, chore.frequencyValue),
+    occurrenceDate: chore.occurrenceDate,
+    done: chore.done,
+    subtasks: chore.subtasks.map((subtask) => ({
+      id: subtask.id,
+      label: subtask.label,
+      done: subtask.done,
+    })),
+  };
+}
+
+function toUserChores(entries: UserChoresResponse[]): UserChores[] {
+  return entries.map((entry) => ({
+    user: entry.user,
+    chores: entry.chores.map(toChoreView),
+  }));
+}
+
+/** WEEK-unit chores only, grouped by person — the persistent weekly
+ * block. Always in stable households.member_order order — see
+ * cleaning-order.ts for "signed-in user first" display reordering, which
+ * happens in the caller. */
 export async function getWeekChores(
   request: Request,
   isoWeek: string,
-): Promise<UserWeekChores[]> {
+): Promise<UserChores[]> {
   const accessToken = await getAccessToken(request);
-  const entries = await apiFetch<UserWeekChoresResponse[]>(
-    `/cleaning?week=${encodeURIComponent(isoWeek)}`,
+  const entries = await apiFetch<UserChoresResponse[]>(
+    `/cleaning/week?week=${encodeURIComponent(isoWeek)}`,
     { accessToken },
   );
-  return entries.map((entry) => ({
-    user: entry.user,
-    chores: entry.chores.map((chore) => ({
-      id: chore.id,
-      name: chore.name,
-      tag: frequencyLabel(chore.frequencyWeeks),
-      done: chore.done,
-    })),
-  }));
+  return toUserChores(entries);
+}
+
+/** DAY-unit chores only, grouped by person, for a single day — the day
+ * navigator's content. */
+export async function getDayChores(
+  request: Request,
+  isoDate: string,
+): Promise<UserChores[]> {
+  const accessToken = await getAccessToken(request);
+  const entries = await apiFetch<UserChoresResponse[]>(
+    `/cleaning/day?date=${encodeURIComponent(isoDate)}`,
+    { accessToken },
+  );
+  return toUserChores(entries);
 }
 
 export async function toggleChoreCompletion(
   request: Request,
   choreId: string,
-  isoWeek: string,
+  occurrenceDate: string,
 ): Promise<void> {
   const accessToken = await getAccessToken(request);
   await apiFetch(`/cleaning/chores/${choreId}/toggle`, {
     method: "PATCH",
     accessToken,
-    body: { isoWeek },
+    body: { occurrenceDate },
+  });
+}
+
+export async function toggleSubtaskCompletion(
+  request: Request,
+  choreId: string,
+  subtaskId: string,
+  occurrenceDate: string,
+): Promise<void> {
+  const accessToken = await getAccessToken(request);
+  await apiFetch(`/cleaning/chores/${choreId}/subtasks/${subtaskId}/toggle`, {
+    method: "PATCH",
+    accessToken,
+    body: { occurrenceDate },
   });
 }

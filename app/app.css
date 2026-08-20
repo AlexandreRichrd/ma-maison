@@ -31,6 +31,22 @@
   --color-climate-inside-icon: oklch(78% 0.1 140);
   --color-climate-inside-text: oklch(42% 0.03 140);
   --color-climate-inside-text-muted: oklch(45% 0.02 140);
+
+  /* Cleaning's persistent weekly block re-plays this whenever the
+     selected day crosses into a different ISO week — see
+     components/cleaning/WeeklyBlock.tsx. */
+  --animate-fade-in: fade-in 0.4s ease-out;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 html,

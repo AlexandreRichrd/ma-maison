@@ -1,4 +1,4 @@
-import type { UserWeekChores } from "~/lib/cleaning-api.server";
+import type { UserChores } from "~/lib/cleaning-api.server";
 
 /**
  * Presentation-only reorder for "signed-in user's column first" — the
@@ -12,9 +12,9 @@ import type { UserWeekChores } from "~/lib/cleaning-api.server";
  * rules on .server.ts files.
  */
 export function withCurrentUserFirst(
-  weekChores: UserWeekChores[],
+  weekChores: UserChores[],
   currentUserId: string,
-): UserWeekChores[] {
+): UserChores[] {
   return [...weekChores].sort((a, b) => {
     if (a.user.id === currentUserId) return -1;
     if (b.user.id === currentUserId) return 1;

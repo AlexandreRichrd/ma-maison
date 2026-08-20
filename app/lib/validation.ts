@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { isValidIsoWeek } from "./week";
+import { isValidIsoDate } from "./day";
 
 export const loginSchema = z.object({
   email: z.email("Adresse email invalide").trim(),
@@ -72,18 +72,26 @@ export const addAsNewListSchema = z.object({
 export const toggleChoreSchema = z.object({
   intent: z.literal("toggleChore"),
   choreId: z.uuid(),
-  isoWeek: z.string().refine(isValidIsoWeek, "Semaine ISO invalide"),
+  occurrenceDate: z.string().refine(isValidIsoDate, "Date invalide"),
+});
+
+export const toggleChoreSubtaskSchema = z.object({
+  intent: z.literal("toggleChoreSubtask"),
+  choreId: z.uuid(),
+  subtaskId: z.uuid(),
+  occurrenceDate: z.string().refine(isValidIsoDate, "Date invalide"),
 });
 
 const choreFieldsSchema = {
   name: z.string().trim().min(1, "Le nom de la corvée est requis"),
-  frequencyWeeks: z
+  frequencyUnit: z.enum(["DAY", "WEEK"]),
+  frequencyValue: z
     .string()
     .trim()
     .regex(/^\d+$/, "Doit être un nombre entier")
     .refine((value) => Number(value) >= 1, "Doit être au moins 1"),
   assignmentMode: z.enum(["ROTATING", "PINNED"]),
-  anchorIsoWeek: z.string().refine(isValidIsoWeek, "Semaine ISO invalide"),
+  anchorDate: z.string().refine(isValidIsoDate, "Date invalide"),
   anchorUserId: z.uuid(),
 };
 
@@ -101,6 +109,31 @@ export const editChoreSchema = z.object({
 export const deleteChoreSchema = z.object({
   intent: z.literal("deleteChore"),
   choreId: z.uuid(),
+});
+
+export const addChoreSubtaskSchema = z.object({
+  intent: z.literal("addChoreSubtask"),
+  choreId: z.uuid(),
+  label: z.string().trim().min(1, "Le libellé est requis"),
+});
+
+export const editChoreSubtaskSchema = z.object({
+  intent: z.literal("editChoreSubtask"),
+  choreId: z.uuid(),
+  subtaskId: z.uuid(),
+  label: z.string().trim().min(1, "Le libellé est requis"),
+});
+
+export const deleteChoreSubtaskSchema = z.object({
+  intent: z.literal("deleteChoreSubtask"),
+  choreId: z.uuid(),
+  subtaskId: z.uuid(),
+});
+
+export const reorderChoreSubtasksSchema = z.object({
+  intent: z.literal("reorderChoreSubtasks"),
+  choreId: z.uuid(),
+  subtaskIds: z.array(z.uuid()).min(1),
 });
 
 export const toggleReminderSchema = z.object({

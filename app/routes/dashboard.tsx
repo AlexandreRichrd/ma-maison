@@ -29,9 +29,17 @@ export async function loader({ request }: Route.LoaderArgs) {
 }
 
 export default function Dashboard({ loaderData }: Route.ComponentProps) {
-  const { dueReminders, shoppingLists, weekChores, indoorClimate, users, currentUserId } =
-    loaderData;
+  const {
+    dueReminders,
+    shoppingLists,
+    dayChores,
+    weekChores,
+    indoorClimate,
+    users,
+    currentUserId,
+  } = loaderData;
   const currentUser = users.find((user) => user.id === currentUserId);
+  const orderedDayChores = withCurrentUserFirst(dayChores, currentUserId);
   const orderedWeekChores = withCurrentUserFirst(weekChores, currentUserId);
 
   return (
@@ -48,6 +56,7 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
         <ReminderWidget reminders={dueReminders} users={users} />
         <ShoppingWidget lists={shoppingLists} />
         <CleaningWidget
+          dayChores={orderedDayChores}
           weekChores={orderedWeekChores}
           stableOrderUserIds={users.map((user) => user.id)}
         />

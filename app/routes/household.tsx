@@ -6,14 +6,27 @@ import { PageHeader } from "~/components/layout/PageHeader";
 import { Button, Card, Input, Modal } from "~/components/ui";
 import { ApiRequestError, mapApiErrors } from "~/lib/api.server";
 import { requireUser } from "~/lib/auth.server";
-import { createChore, deleteChore, getChoreConfigs, updateChore } from "~/lib/chores-api.server";
+import {
+  createChore,
+  createChoreSubtask,
+  deleteChore,
+  deleteChoreSubtask,
+  getChoreConfigs,
+  reorderChoreSubtasks,
+  updateChore,
+  updateChoreSubtask,
+} from "~/lib/chores-api.server";
 import { createInvite, getOrderedUsers } from "~/lib/household-api.server";
 import { AVATAR_COLORS } from "~/lib/user-colors";
 import {
   addChoreSchema,
+  addChoreSubtaskSchema,
   deleteChoreSchema,
+  deleteChoreSubtaskSchema,
   editChoreSchema,
+  editChoreSubtaskSchema,
   inviteSchema,
+  reorderChoreSubtasksSchema,
 } from "~/lib/validation";
 
 import type { Route } from "./+types/household";
@@ -61,6 +74,54 @@ export async function action({ request }: Route.ActionArgs) {
         return data({ errors: result.error.flatten().fieldErrors }, { status: 400 });
       }
       await deleteChore(request, result.data.choreId);
+      return { ok: true };
+    }
+
+    if (intent === "addChoreSubtask") {
+      const result = addChoreSubtaskSchema.safeParse(Object.fromEntries(formData));
+      if (!result.success) {
+        return data({ errors: result.error.flatten().fieldErrors }, { status: 400 });
+      }
+      await createChoreSubtask(request, result.data.choreId, result.data.label);
+      return { ok: true };
+    }
+
+    if (intent === "editChoreSubtask") {
+      const result = editChoreSubtaskSchema.safeParse(Object.fromEntries(formData));
+      if (!result.success) {
+        return data({ errors: result.error.flatten().fieldErrors }, { status: 400 });
+      }
+      await updateChoreSubtask(
+        request,
+        result.data.choreId,
+        result.data.subtaskId,
+        result.data.label,
+      );
+      return { ok: true };
+    }
+
+    if (intent === "deleteChoreSubtask") {
+      const result = deleteChoreSubtaskSchema.safeParse(Object.fromEntries(formData));
+      if (!result.success) {
+        return data({ errors: result.error.flatten().fieldErrors }, { status: 400 });
+      }
+      await deleteChoreSubtask(request, result.data.choreId, result.data.subtaskId);
+      return { ok: true };
+    }
+
+    if (intent === "reorderChoreSubtasks") {
+      // subtaskIds is submitted as several same-named fields — Object.
+      // fromEntries would collapse them to just the last one, so this
+      // intent parses the raw FormData instead.
+      const result = reorderChoreSubtasksSchema.safeParse({
+        intent: formData.get("intent"),
+        choreId: formData.get("choreId"),
+        subtaskIds: formData.getAll("subtaskIds"),
+      });
+      if (!result.success) {
+        return data({ errors: result.error.flatten().fieldErrors }, { status: 400 });
+      }
+      await reorderChoreSubtasks(request, result.data.choreId, result.data.subtaskIds);
       return { ok: true };
     }
 

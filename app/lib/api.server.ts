@@ -104,8 +104,13 @@ const ERROR_MESSAGES: Record<string, string> = {
   unauthenticated: "Merci de vous reconnecter",
   too_small: "Valeur trop petite",
   // Only reachable via a stale/replayed toggle — the UI never renders a
-  // checkbox for a chore that isn't scheduled this week.
-  chore_not_scheduled: "Cette tâche n'est pas prévue cette semaine",
+  // checkbox for a chore that isn't scheduled that day.
+  chore_not_scheduled: "Cette tâche n'est pas prévue à cette date",
+  invalid_iso_date: "Date invalide",
+  anchor_date_not_monday: "La semaine de départ doit commencer un lundi",
+  // Only reachable via a stale/replayed reorder — the UI always submits
+  // every current subtask id.
+  invalid_subtask_set: "La liste des sous-tâches a changé, réessayez",
 };
 
 export function mapApiErrors(errors: ApiFieldError[]): Record<string, string[]> {
