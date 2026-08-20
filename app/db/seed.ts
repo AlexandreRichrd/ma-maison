@@ -9,6 +9,7 @@ import { eq } from "drizzle-orm";
 
 import {
   choreCompletions,
+  choreSubtasks,
   chores,
   households,
   recipeIngredients,
@@ -31,6 +32,7 @@ async function main() {
   // NEVER run this against a database with real accounts in it — it wipes
   // the users table along with everything else.
   await db.delete(choreCompletions);
+  await db.delete(choreSubtasks);
   await db.delete(chores);
   await db.delete(shoppingItems);
   await db.delete(shoppingLists);
@@ -74,15 +76,29 @@ async function main() {
   // Same weekly/every-2-weeks × first/second-member split the backend's
   // own per-chore-configuration migration backfilled the old A/B/C/D
   // groups into — see my-home-backend/CLAUDE.md's Chore rotation section.
-  const ROTATION_ANCHOR = "2024-W01";
-  await db.insert(chores).values([
-    { name: "Cuisine", frequencyWeeks: 1, assignmentMode: "ROTATING", anchorIsoWeek: ROTATION_ANCHOR, anchorUserId: mia.id },
-    { name: "Poubelles", frequencyWeeks: 1, assignmentMode: "ROTATING", anchorIsoWeek: ROTATION_ANCHOR, anchorUserId: mia.id },
-    { name: "Salle de bain", frequencyWeeks: 1, assignmentMode: "ROTATING", anchorIsoWeek: ROTATION_ANCHOR, anchorUserId: sam.id },
-    { name: "Surfaces", frequencyWeeks: 1, assignmentMode: "ROTATING", anchorIsoWeek: ROTATION_ANCHOR, anchorUserId: sam.id },
-    { name: "Sols", frequencyWeeks: 1, assignmentMode: "ROTATING", anchorIsoWeek: ROTATION_ANCHOR, anchorUserId: sam.id },
-    { name: "Draps", frequencyWeeks: 2, assignmentMode: "ROTATING", anchorIsoWeek: ROTATION_ANCHOR, anchorUserId: mia.id },
-    { name: "Couloir", frequencyWeeks: 2, assignmentMode: "ROTATING", anchorIsoWeek: ROTATION_ANCHOR, anchorUserId: sam.id },
+  // WEEKLY_ANCHOR is the Monday of what used to be "2024-W01" — WEEK-unit
+  // chores require a Monday anchor.
+  const WEEKLY_ANCHOR = "2024-01-01";
+  const DAILY_ANCHOR = "2024-01-01";
+  const [, , , , , , , dishes] = await db
+    .insert(chores)
+    .values([
+      { name: "Cuisine", frequencyUnit: "WEEK", frequencyValue: 1, assignmentMode: "ROTATING", anchorDate: WEEKLY_ANCHOR, anchorUserId: mia.id },
+      { name: "Poubelles", frequencyUnit: "WEEK", frequencyValue: 1, assignmentMode: "ROTATING", anchorDate: WEEKLY_ANCHOR, anchorUserId: mia.id },
+      { name: "Salle de bain", frequencyUnit: "WEEK", frequencyValue: 1, assignmentMode: "ROTATING", anchorDate: WEEKLY_ANCHOR, anchorUserId: sam.id },
+      { name: "Surfaces", frequencyUnit: "WEEK", frequencyValue: 1, assignmentMode: "ROTATING", anchorDate: WEEKLY_ANCHOR, anchorUserId: sam.id },
+      { name: "Sols", frequencyUnit: "WEEK", frequencyValue: 1, assignmentMode: "ROTATING", anchorDate: WEEKLY_ANCHOR, anchorUserId: sam.id },
+      { name: "Draps", frequencyUnit: "WEEK", frequencyValue: 2, assignmentMode: "ROTATING", anchorDate: WEEKLY_ANCHOR, anchorUserId: mia.id },
+      { name: "Couloir", frequencyUnit: "WEEK", frequencyValue: 2, assignmentMode: "ROTATING", anchorDate: WEEKLY_ANCHOR, anchorUserId: sam.id },
+      // A daily chore with subtasks, so the day navigator and subtask
+      // checklist both have something real to render out of the box.
+      { name: "Vaisselle", frequencyUnit: "DAY", frequencyValue: 1, assignmentMode: "ROTATING", anchorDate: DAILY_ANCHOR, anchorUserId: mia.id },
+    ])
+    .returning();
+
+  await db.insert(choreSubtasks).values([
+    { choreId: dishes.id, label: "Laver", position: 0 },
+    { choreId: dishes.id, label: "Ranger", position: 1 },
   ]);
 
   const [groceries, costco] = await db

@@ -1,6 +1,7 @@
 import { relations } from "drizzle-orm";
 import {
   boolean,
+  date,
   numeric,
   pgEnum,
   pgTable,
@@ -126,19 +127,50 @@ export const assignmentModeEnum = pgEnum("assignment_mode", [
   "PINNED",
 ]);
 
+// DAY = occurs every frequencyValue days, WEEK = occurs every
+// frequencyValue weeks (1 = weekly, 2 = biweekly, etc). Both frequency
+// fields are always populated — see my-home-backend/CLAUDE.md's Chore
+// rotation section for the periodDays formula this feeds.
+export const frequencyUnitEnum = pgEnum("frequency_unit", ["DAY", "WEEK"]);
+
 export const chores = pgTable("chores", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
-  frequencyWeeks: integer("frequency_weeks").notNull(),
+  frequencyUnit: frequencyUnitEnum("frequency_unit").notNull(),
+  frequencyValue: integer("frequency_value").notNull(),
   assignmentMode: assignmentModeEnum("assignment_mode").notNull(),
-  // The ISO week (YYYY-Www) this chore first occurred — every later
-  // occurrence is derived from this by the backend's rotation.service.ts.
-  anchorIsoWeek: text("anchor_iso_week").notNull(),
+  // The calendar date this chore first occurred — every later occurrence
+  // is derived from this by the backend's rotation.service.ts. Must be a
+  // Monday when frequencyUnit is WEEK (enforced by the backend, not here).
+  anchorDate: date("anchor_date", { mode: "string" }).notNull(),
   // Dual meaning by assignmentMode: for PINNED, the permanent assignee;
-  // for ROTATING, who was assigned on anchorIsoWeek (occurrence 0).
+  // for ROTATING, who was assigned on anchorDate (occurrence 0).
   anchorUserId: uuid("anchor_user_id")
     .notNull()
     .references(() => users.id, { onDelete: "restrict" }),
+  ...timestamps,
+});
+
+// Subtasks inherit everything from their parent chore — no frequency, no
+// assignee of their own. See my-home-backend/CLAUDE.md's Chore rotation
+// section (Subtasks) for the completion/derived-done rules.
+export const choreSubtasks = pgTable("chore_subtasks", {
+  // $defaultFn, not .defaultRandom(): unlike every other table here (all
+  // predate the Prisma cutover and inherited a gen_random_uuid() column
+  // default from their original Drizzle creation — see
+  // my-home-backend/CLAUDE.md's Migration history note), chore_subtasks
+  // was created fresh by a hand-written Prisma migration with no DB-level
+  // default, matching how Prisma generates ids client-side. .defaultRandom()
+  // relies on the DB default existing and silently sent a bare SQL DEFAULT
+  // for a NOT NULL column with none, failing every insert.
+  id: uuid("id")
+    .$defaultFn(() => crypto.randomUUID())
+    .primaryKey(),
+  choreId: uuid("chore_id")
+    .notNull()
+    .references(() => chores.id, { onDelete: "cascade" }),
+  label: text("label").notNull(),
+  position: integer("position").notNull(),
   ...timestamps,
 });
 
@@ -152,12 +184,26 @@ export const choreCompletions = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    isoWeek: text("iso_week").notNull(),
+    // Null for a chore with no subtasks (a chore with subtasks has one
+    // completion row per subtask, never a parent-level row of its own).
+    subtaskId: uuid("subtask_id").references(() => choreSubtasks.id, {
+      onDelete: "cascade",
+    }),
+    // The calendar date the occurrence starts, anchor-aligned — not the
+    // date someone happened to tick the box.
+    occurrenceDate: date("occurrence_date", { mode: "string" }).notNull(),
     completedAt: timestamp("completed_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
   },
-  (table) => [unique().on(table.choreId, table.isoWeek)],
+  // Best-effort mirror only — the real uniqueness guarantee is two
+  // hand-written *partial* unique indexes (one per subtaskId null/
+  // not-null case, since Postgres treats every NULL as distinct in a
+  // plain unique index), created directly in my-home-backend's
+  // migrations. This file is never applied against the database (see
+  // CLAUDE.md's Database section — it's a seed-only Drizzle setup), so
+  // the exact index shape here is documentation, not enforcement.
+  (table) => [unique().on(table.choreId, table.subtaskId, table.occurrenceDate)],
 );
 
 export const reminders = pgTable("reminders", {
@@ -255,7 +301,19 @@ export const choresRelations = relations(chores, ({ one, many }) => ({
     references: [users.id],
   }),
   completions: many(choreCompletions),
+  subtasks: many(choreSubtasks),
 }));
+
+export const choreSubtasksRelations = relations(
+  choreSubtasks,
+  ({ one, many }) => ({
+    chore: one(chores, {
+      fields: [choreSubtasks.choreId],
+      references: [chores.id],
+    }),
+    completions: many(choreCompletions),
+  }),
+);
 
 export const choreCompletionsRelations = relations(
   choreCompletions,
@@ -268,6 +326,10 @@ export const choreCompletionsRelations = relations(
       fields: [choreCompletions.userId],
       references: [users.id],
     }),
+    subtask: one(choreSubtasks, {
+      fields: [choreCompletions.subtaskId],
+      references: [choreSubtasks.id],
+    }),
   }),
 );
 
@@ -278,6 +340,7 @@ export type ShoppingItem = typeof shoppingItems.$inferSelect;
 export type Recipe = typeof recipes.$inferSelect;
 export type RecipeIngredient = typeof recipeIngredients.$inferSelect;
 export type Chore = typeof chores.$inferSelect;
+export type ChoreSubtask = typeof choreSubtasks.$inferSelect;
 export type ChoreCompletion = typeof choreCompletions.$inferSelect;
 export type Reminder = typeof reminders.$inferSelect;
 export type Invite = typeof invites.$inferSelect;
