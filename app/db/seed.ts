@@ -80,9 +80,11 @@ async function main() {
   // chores require a Monday anchor.
   const WEEKLY_ANCHOR = "2024-01-01";
   const DAILY_ANCHOR = "2024-01-01";
-  const [, , , , , , , dishes] = await db
+  const [cuisine, , , , , , , dishes] = await db
     .insert(chores)
     .values([
+      // A weekly chore with subtasks, so the persistent weekly block's
+      // expand affordance has something real to render out of the box.
       { name: "Cuisine", frequencyUnit: "WEEK", frequencyValue: 1, assignmentMode: "ROTATING", anchorDate: WEEKLY_ANCHOR, anchorUserId: mia.id },
       { name: "Poubelles", frequencyUnit: "WEEK", frequencyValue: 1, assignmentMode: "ROTATING", anchorDate: WEEKLY_ANCHOR, anchorUserId: mia.id },
       { name: "Salle de bain", frequencyUnit: "WEEK", frequencyValue: 1, assignmentMode: "ROTATING", anchorDate: WEEKLY_ANCHOR, anchorUserId: sam.id },
@@ -97,6 +99,8 @@ async function main() {
     .returning();
 
   await db.insert(choreSubtasks).values([
+    { choreId: cuisine.id, label: "Plan de travail", position: 0 },
+    { choreId: cuisine.id, label: "Évier", position: 1 },
     { choreId: dishes.id, label: "Laver", position: 0 },
     { choreId: dishes.id, label: "Ranger", position: 1 },
   ]);

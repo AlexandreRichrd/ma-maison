@@ -49,6 +49,7 @@ export function WeeklyBlock({
               stableOrderUserIds.map((id) => ({ id })),
               userChores.user.id,
             )}
+            subtasksExpandable
           />
         ))}
       </div>

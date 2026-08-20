@@ -104,6 +104,7 @@ export default function Cleaning({ loaderData }: Route.ComponentProps) {
               stableOrderUserIds.map((id) => ({ id })),
               userChores.user.id,
             )}
+            subtasksExpandable={false}
           />
         ))}
       </div>

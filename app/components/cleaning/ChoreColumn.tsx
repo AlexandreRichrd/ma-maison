@@ -7,6 +7,7 @@ export function ChoreColumn({
   userChores,
   emptyStateText,
   avatarColorClassName,
+  subtasksExpandable,
 }: {
   userChores: UserChores;
   // "Rien à faire cette semaine." for the weekly block, "Aucune corvée ce
@@ -18,6 +19,10 @@ export function ChoreColumn({
   // be shown reordered ("signed-in user first"), and the color must not
   // flip depending on who's looking.
   avatarColorClassName: string | undefined;
+  // Day view (false) renders subtask checklists inline, always visible;
+  // the weekly block (true) keeps them collapsed behind an expand control
+  // — see ChoreItem and my-home/CLAUDE.md's Cleaning section.
+  subtasksExpandable: boolean;
 }) {
   return (
     // min-w-0: the parent grid's tracks are already minmax(0,1fr) (Tailwind's
@@ -47,7 +52,9 @@ export function ChoreColumn({
             {emptyStateText}
           </p>
         ) : (
-          userChores.chores.map((chore) => <ChoreItem key={chore.id} chore={chore} />)
+          userChores.chores.map((chore) => (
+            <ChoreItem key={chore.id} chore={chore} subtasksExpandable={subtasksExpandable} />
+          ))
         )}
       </div>
     </Card>
