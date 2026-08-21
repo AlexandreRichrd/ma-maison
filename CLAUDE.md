@@ -61,19 +61,23 @@ Read-only overview, one loader aggregating four sources:
 - shopping list previews (name + open-item count)
 - this week's cleaning chores, grouped by person — signed-in user's column
   first, but both people always shown (see Cleaning)
-- indoor temperature/humidity, from `my-home-backend`'s
-  `GET /climate/current` (`lib/climate-api.server.ts`) — the latest reading
-  from the household's one indoor sensor (see
-  `my-home-backend/CLAUDE.md`'s Climate). Fetched once per loader run, same
-  as everything else on this page — **deliberately not polled**. Readings
-  only update about once a minute at the source, and a loader fetch on
-  navigation/refresh is enough to show current-enough data; a websocket or
-  a `setInterval` refetch would be solving a problem this page doesn't
-  have. Revisit only if the widget needs to update while the tab stays
-  open and idle. `lib/climate.ts`'s `isStale()` flags a reading as
-  not-live past a 5-minute threshold, computed server-side at request time
-  against `Date.now()` — outdoor temperature has no sensor yet and stays a
-  hardcoded, clearly-labeled placeholder in `HomeClimateWidget`
+- indoor and outdoor temperature (plus indoor humidity), from
+  `my-home-backend`'s `GET /climate/current` (`lib/climate-api.server.ts`'s
+  `getHomeClimate()`) — the latest reading from each of the household's two
+  sensors, `capteur-salon` (indoor) and `capteur-exterieur` (outdoor,
+  temperature only — a DS18B20 probe, no humidity), filtered by
+  `deviceName` (see `my-home-backend/CLAUDE.md`'s Climate). Fetched once
+  per loader run, same as everything else on this page — **deliberately
+  not polled**. Readings only update about once a minute at the source,
+  and a loader fetch on navigation/refresh is enough to show current-enough
+  data; a websocket or a `setInterval` refetch would be solving a problem
+  this page doesn't have on its own — the live-update path
+  `HomeClimateWidget` also has (`applyMeasurements`, fed by
+  `climate-socket.client.ts`) exists for the widget to stay current while
+  the tab is open, not to replace the loader fetch. `lib/climate.ts`'s
+  `isStale()` flags a reading as not-live past a 5-minute threshold,
+  computed server-side at request time against `Date.now()` for each
+  sensor independently
 
 Every widget links into its owning section. No mutations happen here.
 

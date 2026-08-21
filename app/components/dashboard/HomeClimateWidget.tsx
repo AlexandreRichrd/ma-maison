@@ -2,35 +2,64 @@ import { useEffect, useRef, useState } from "react";
 import { useRevalidator } from "react-router";
 
 import { Card } from "~/components/ui";
-import type { IndoorClimate } from "~/lib/climate-api.server";
+import type { IndoorClimate, OutdoorClimate } from "~/lib/climate-api.server";
 import { connectClimateSocket, type ClimateMeasurement } from "~/lib/climate-socket.client";
 
-// Placeholder — no outdoor sensor yet (a Stevenson-screen one is planned,
-// see capteurs/README.md). Marked "estimation" in the UI rather than
-// dropped, so the layout keeps its two-box shape; not wired to a weather
-// API or a real sensor.
-const OUTSIDE_TEMP_C = 20;
+const INDOOR_DEVICE = "capteur-salon";
+const OUTDOOR_DEVICE = "capteur-exterieur";
+
+export type HomeClimate = {
+  indoor: IndoorClimate;
+  outdoor: OutdoorClimate;
+};
 
 export function applyMeasurements(
-  indoor: IndoorClimate,
+  climate: HomeClimate,
   measurements: ClimateMeasurement[],
-): IndoorClimate {
-  const temperature = measurements.find((m) => m.type === "temperature");
-  const humidity = measurements.find((m) => m.type === "humidite");
-  const latest = temperature ?? humidity;
+): HomeClimate {
+  const indoorMeasurements = measurements.filter((m) => m.deviceName === INDOOR_DEVICE);
+  const temperature = indoorMeasurements.find((m) => m.type === "temperature");
+  const humidity = indoorMeasurements.find((m) => m.type === "humidite");
+  const indoorLatest = temperature ?? humidity;
+
+  const outdoorTemperature = measurements.find(
+    (m) => m.deviceName === OUTDOOR_DEVICE && m.type === "temperature",
+  );
 
   return {
-    temperatureC: temperature ? Number(temperature.value) : indoor.temperatureC,
-    humidityPercent: humidity ? Number(humidity.value) : indoor.humidityPercent,
-    recordedAt: latest ? new Date(latest.recordedAt) : indoor.recordedAt,
-    // Just arrived over the socket — current by definition, no need to
-    // re-run climate.ts's isStale() against "now" the way the loader does.
-    stale: false,
+    indoor: {
+      temperatureC: temperature ? Number(temperature.value) : climate.indoor.temperatureC,
+      humidityPercent: humidity ? Number(humidity.value) : climate.indoor.humidityPercent,
+      recordedAt: indoorLatest ? new Date(indoorLatest.recordedAt) : climate.indoor.recordedAt,
+      // Just arrived over the socket — current by definition, no need to
+      // re-run climate.ts's isStale() against "now" the way the loader
+      // does. A broadcast carrying only the other device's reading leaves
+      // this one's stale flag untouched rather than clearing it.
+      stale: indoorLatest ? false : climate.indoor.stale,
+    },
+    outdoor: {
+      temperatureC: outdoorTemperature
+        ? Number(outdoorTemperature.value)
+        : climate.outdoor.temperatureC,
+      recordedAt: outdoorTemperature
+        ? new Date(outdoorTemperature.recordedAt)
+        : climate.outdoor.recordedAt,
+      stale: outdoorTemperature ? false : climate.outdoor.stale,
+    },
   };
 }
 
-export function HomeClimateWidget({ indoor: loaderIndoor }: { indoor: IndoorClimate }) {
-  const [indoor, setIndoor] = useState(loaderIndoor);
+export function HomeClimateWidget({
+  indoor: loaderIndoor,
+  outdoor: loaderOutdoor,
+}: {
+  indoor: IndoorClimate;
+  outdoor: OutdoorClimate;
+}) {
+  const [climate, setClimate] = useState<HomeClimate>({
+    indoor: loaderIndoor,
+    outdoor: loaderOutdoor,
+  });
   // A fresh loader run (navigation, or the reconnect-triggered revalidation
   // below) is always at least as current as whatever the socket built up —
   // let it replace local state rather than merge with it. Adjusted during
@@ -38,9 +67,11 @@ export function HomeClimateWidget({ indoor: loaderIndoor }: { indoor: IndoorClim
   // changes: https://react.dev/learn/you-might-not-need-an-effect), not in
   // an effect, so it doesn't cost an extra render pass.
   const [prevLoaderIndoor, setPrevLoaderIndoor] = useState(loaderIndoor);
-  if (loaderIndoor !== prevLoaderIndoor) {
+  const [prevLoaderOutdoor, setPrevLoaderOutdoor] = useState(loaderOutdoor);
+  if (loaderIndoor !== prevLoaderIndoor || loaderOutdoor !== prevLoaderOutdoor) {
     setPrevLoaderIndoor(loaderIndoor);
-    setIndoor(loaderIndoor);
+    setPrevLoaderOutdoor(loaderOutdoor);
+    setClimate({ indoor: loaderIndoor, outdoor: loaderOutdoor });
   }
 
   const revalidator = useRevalidator();
@@ -52,7 +83,7 @@ export function HomeClimateWidget({ indoor: loaderIndoor }: { indoor: IndoorClim
   useEffect(() => {
     const socket = connectClimateSocket({
       onMeasurement: (measurements) => {
-        setIndoor((current) => applyMeasurements(current, measurements));
+        setClimate((current) => applyMeasurements(current, measurements));
       },
       onReconnect: () => {
         // Fills the gap that opened while disconnected — SSR data plus
@@ -73,7 +104,9 @@ export function HomeClimateWidget({ indoor: loaderIndoor }: { indoor: IndoorClim
     };
   }, []);
 
-  const hasReading = indoor.temperatureC !== null && indoor.humidityPercent !== null;
+  const { indoor, outdoor } = climate;
+  const hasIndoorReading = indoor.temperatureC !== null && indoor.humidityPercent !== null;
+  const hasOutdoorReading = outdoor.temperatureC !== null;
 
   return (
     <Card className="sm:col-span-2">
@@ -83,9 +116,22 @@ export function HomeClimateWidget({ indoor: loaderIndoor }: { indoor: IndoorClim
           <div className="size-10 shrink-0 rounded-full bg-climate-outside-icon" />
           <div>
             <div className="mb-0.5 text-xs font-semibold tracking-wide text-climate-outside-text uppercase">
-              Extérieur (estimation)
+              Extérieur
             </div>
-            <div className="font-serif text-xl font-bold">{OUTSIDE_TEMP_C}°C</div>
+            {hasOutdoorReading ? (
+              <>
+                <div className="font-serif text-xl font-bold">
+                  {outdoor.temperatureC?.toFixed(1)}°C
+                </div>
+                {outdoor.stale && (
+                  <div className="mt-0.5 text-xs text-muted">
+                    Capteur injoignable — dernière lecture non récente
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-sm text-muted">Aucune donnée du capteur extérieur</div>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-3.5 rounded-xl bg-climate-inside-bg px-4 py-3.5">
@@ -94,7 +140,7 @@ export function HomeClimateWidget({ indoor: loaderIndoor }: { indoor: IndoorClim
             <div className="mb-0.5 text-xs font-semibold tracking-wide text-climate-inside-text uppercase">
               Intérieur
             </div>
-            {hasReading ? (
+            {hasIndoorReading ? (
               <>
                 <div className="flex items-baseline gap-2.5">
                   <div className="font-serif text-xl font-bold">
