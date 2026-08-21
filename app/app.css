@@ -27,6 +27,7 @@
   --color-climate-outside-bg: oklch(96% 0.015 220);
   --color-climate-outside-icon: oklch(80% 0.08 220);
   --color-climate-outside-text: oklch(45% 0.02 220);
+  --color-climate-outside-text-muted: oklch(48% 0.02 220);
   --color-climate-inside-bg: oklch(96% 0.02 140);
   --color-climate-inside-icon: oklch(78% 0.1 140);
   --color-climate-inside-text: oklch(42% 0.03 140);

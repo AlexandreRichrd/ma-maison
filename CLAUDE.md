@@ -61,22 +61,30 @@ Read-only overview, one loader aggregating four sources:
 - shopping list previews (name + open-item count)
 - this week's cleaning chores, grouped by person — signed-in user's column
   first, but both people always shown (see Cleaning)
-- indoor and outdoor temperature (plus indoor humidity), from
-  `my-home-backend`'s `GET /climate/current` (`lib/climate-api.server.ts`'s
-  `getHomeClimate()`) — the latest reading from each of the household's two
-  sensors, `capteur-salon` (indoor) and `capteur-exterieur` (outdoor,
-  temperature only — a DS18B20 probe, no humidity), filtered by
-  `deviceName` (see `my-home-backend/CLAUDE.md`'s Climate). Fetched once
-  per loader run, same as everything else on this page — **deliberately
-  not polled**. Readings only update about once a minute at the source,
-  and a loader fetch on navigation/refresh is enough to show current-enough
-  data; a websocket or a `setInterval` refetch would be solving a problem
-  this page doesn't have on its own — the live-update path
-  `HomeClimateWidget` also has (`applyMeasurements`, fed by
-  `climate-socket.client.ts`) exists for the widget to stay current while
-  the tab is open, not to replace the loader fetch. `lib/climate.ts`'s
-  `isStale()` flags a reading as not-live past a 5-minute threshold,
-  computed server-side at request time against `Date.now()` for each
+- indoor and outdoor temperature (plus indoor humidity and outdoor battery
+  level), from `my-home-backend`'s `GET /climate/current`
+  (`lib/climate-api.server.ts`'s `getHomeClimate()`) — the latest reading
+  from each of the household's two sensors, `capteur-salon` (indoor) and
+  `capteur-exterieur` (outdoor, temperature + battery only — a DS18B20
+  probe, no humidity), filtered by `deviceName` (see
+  `my-home-backend/CLAUDE.md`'s Climate). The outdoor sensor's `batterie`
+  reading arrives as an already-computed percentage — the voltage-to-percent
+  conversion happens on-device, in `capteurs/capteur-exterieur.yaml`'s
+  `calibrate_linear` filter (a rough single-cell LiPo curve approximation,
+  not lab-calibrated), not here; this repo just parses it like any other
+  numeric reading. Fetched once per loader run, same as everything else on
+  this page — **deliberately not
+  polled**. Indoor readings update about once a minute at the source;
+  outdoor wakes on a 2-minute deep-sleep cycle (see
+  `capteurs/capteur-exterieur.yaml`) — either way, a loader fetch on
+  navigation/refresh is enough to show current-enough data; a websocket or
+  a `setInterval` refetch would be solving a problem this page doesn't have
+  on its own — the live-update path `HomeClimateWidget` also has
+  (`applyMeasurements`, fed by `climate-socket.client.ts`) exists for the
+  widget to stay current while the tab is open, not to replace the loader
+  fetch. `lib/climate.ts`'s `isStale()` flags a reading as not-live past a
+  5-minute threshold, computed server-side at request time against
+  `Date.now()` for each
   sensor independently
 
 Every widget links into its owning section. No mutations happen here.

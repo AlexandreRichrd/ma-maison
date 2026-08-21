@@ -13,6 +13,7 @@ const baselineIndoor: IndoorClimate = {
 
 const baselineOutdoor: OutdoorClimate = {
   temperatureC: 15.2,
+  batteryPercent: 75,
   recordedAt: new Date("2026-08-15T09:00:00.000Z"),
   stale: true,
 };
@@ -73,7 +74,32 @@ describe("applyMeasurements", () => {
     expect(result.indoor.stale).toBe(false);
   });
 
-  it("updates the outdoor temperature from a capteur-exterieur broadcast, leaving indoor untouched", () => {
+  it("updates outdoor temperature and battery together when a broadcast carries both, leaving indoor untouched", () => {
+    const result = applyMeasurements(baseline, [
+      {
+        deviceName: "capteur-exterieur",
+        type: "temperature",
+        value: "16.8",
+        recordedAt: "2026-08-15T10:00:00.000Z",
+      },
+      {
+        deviceName: "capteur-exterieur",
+        type: "batterie",
+        value: "62",
+        recordedAt: "2026-08-15T10:00:00.000Z",
+      },
+    ]);
+
+    expect(result.outdoor).toEqual({
+      temperatureC: 16.8,
+      batteryPercent: 62,
+      recordedAt: new Date("2026-08-15T10:00:00.000Z"),
+      stale: false,
+    });
+    expect(result.indoor).toEqual(baselineIndoor);
+  });
+
+  it("updates only outdoor temperature when a broadcast carries only that type, leaving battery as-is", () => {
     const result = applyMeasurements(baseline, [
       {
         deviceName: "capteur-exterieur",
@@ -83,25 +109,24 @@ describe("applyMeasurements", () => {
       },
     ]);
 
-    expect(result.outdoor).toEqual({
-      temperatureC: 16.8,
-      recordedAt: new Date("2026-08-15T10:00:00.000Z"),
-      stale: false,
-    });
-    expect(result.indoor).toEqual(baselineIndoor);
+    expect(result.outdoor.temperatureC).toBe(16.8);
+    expect(result.outdoor.batteryPercent).toBe(baselineOutdoor.batteryPercent);
+    expect(result.outdoor.stale).toBe(false);
   });
 
-  it("ignores an outdoor batterie reading, since only temperature is rendered", () => {
+  it("updates only outdoor battery when a broadcast carries only that type, leaving temperature as-is", () => {
     const result = applyMeasurements(baseline, [
       {
         deviceName: "capteur-exterieur",
         type: "batterie",
-        value: "87",
+        value: "40",
         recordedAt: "2026-08-15T10:00:00.000Z",
       },
     ]);
 
-    expect(result.outdoor).toEqual(baselineOutdoor);
+    expect(result.outdoor.batteryPercent).toBe(40);
+    expect(result.outdoor.temperatureC).toBe(baselineOutdoor.temperatureC);
+    expect(result.outdoor.stale).toBe(false);
   });
 
   it("leaves a device's stale flag untouched when a broadcast only carries the other device's reading", () => {
