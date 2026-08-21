@@ -16,9 +16,13 @@ export type IndoorClimate = {
   stale: boolean;
 };
 
-// DS18B20 probes only report temperature — no humidity outdoors.
+// DS18B20 probes only report temperature — no humidity outdoors. The
+// device is battery-powered, so a battery level rides alongside it —
+// already a percentage on arrival, converted from raw voltage on-device
+// by capteur-exterieur.yaml's calibrate_linear filter, not here.
 export type OutdoorClimate = {
   temperatureC: number | null;
+  batteryPercent: number | null;
   recordedAt: Date | null;
   stale: boolean;
 };
@@ -66,13 +70,20 @@ function buildIndoorClimate(readings: ClimateReadingDto[]): IndoorClimate {
 }
 
 function buildOutdoorClimate(readings: ClimateReadingDto[]): OutdoorClimate {
-  const temperature = readings.find(
-    (r) => r.deviceName === OUTDOOR_DEVICE && r.type === "temperature",
-  );
-  const recordedAt = temperature ? new Date(temperature.recordedAt) : undefined;
+  const outdoorReadings = readings.filter((r) => r.deviceName === OUTDOOR_DEVICE);
+  const temperature = outdoorReadings.find((r) => r.type === "temperature");
+  const battery = outdoorReadings.find((r) => r.type === "batterie");
+
+  // The older of the two timestamps, if both are present — same reasoning
+  // as buildIndoorClimate's temperature/humidity pairing.
+  const recordedAt = [temperature, battery]
+    .filter((reading): reading is ClimateReadingDto => reading !== undefined)
+    .map((reading) => new Date(reading.recordedAt))
+    .sort((a, b) => a.getTime() - b.getTime())[0];
 
   return {
     temperatureC: temperature ? Number(temperature.value) : null,
+    batteryPercent: battery ? Number(battery.value) : null,
     recordedAt: recordedAt ?? null,
     stale: recordedAt === undefined || isStale(recordedAt, new Date()),
   };

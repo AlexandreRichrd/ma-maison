@@ -22,9 +22,10 @@ export function applyMeasurements(
   const humidity = indoorMeasurements.find((m) => m.type === "humidite");
   const indoorLatest = temperature ?? humidity;
 
-  const outdoorTemperature = measurements.find(
-    (m) => m.deviceName === OUTDOOR_DEVICE && m.type === "temperature",
-  );
+  const outdoorMeasurements = measurements.filter((m) => m.deviceName === OUTDOOR_DEVICE);
+  const outdoorTemperature = outdoorMeasurements.find((m) => m.type === "temperature");
+  const outdoorBattery = outdoorMeasurements.find((m) => m.type === "batterie");
+  const outdoorLatest = outdoorTemperature ?? outdoorBattery;
 
   return {
     indoor: {
@@ -41,10 +42,11 @@ export function applyMeasurements(
       temperatureC: outdoorTemperature
         ? Number(outdoorTemperature.value)
         : climate.outdoor.temperatureC,
-      recordedAt: outdoorTemperature
-        ? new Date(outdoorTemperature.recordedAt)
-        : climate.outdoor.recordedAt,
-      stale: outdoorTemperature ? false : climate.outdoor.stale,
+      batteryPercent: outdoorBattery
+        ? Number(outdoorBattery.value)
+        : climate.outdoor.batteryPercent,
+      recordedAt: outdoorLatest ? new Date(outdoorLatest.recordedAt) : climate.outdoor.recordedAt,
+      stale: outdoorLatest ? false : climate.outdoor.stale,
     },
   };
 }
@@ -106,7 +108,7 @@ export function HomeClimateWidget({
 
   const { indoor, outdoor } = climate;
   const hasIndoorReading = indoor.temperatureC !== null && indoor.humidityPercent !== null;
-  const hasOutdoorReading = outdoor.temperatureC !== null;
+  const hasOutdoorReading = outdoor.temperatureC !== null && outdoor.batteryPercent !== null;
 
   return (
     <Card className="sm:col-span-2">
@@ -120,8 +122,13 @@ export function HomeClimateWidget({
             </div>
             {hasOutdoorReading ? (
               <>
-                <div className="font-serif text-xl font-bold">
-                  {outdoor.temperatureC?.toFixed(1)}°C
+                <div className="flex items-baseline gap-2.5">
+                  <div className="font-serif text-xl font-bold">
+                    {outdoor.temperatureC?.toFixed(1)}°C
+                  </div>
+                  <div className="text-sm font-semibold text-climate-outside-text-muted">
+                    {outdoor.batteryPercent?.toFixed(0)}% batterie
+                  </div>
                 </div>
                 {outdoor.stale && (
                   <div className="mt-0.5 text-xs text-muted">
