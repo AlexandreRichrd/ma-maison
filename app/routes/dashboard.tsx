@@ -35,6 +35,7 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
     dayChores,
     weekChores,
     indoorClimate,
+    outdoorClimate,
     users,
     currentUserId,
   } = loaderData;
@@ -52,7 +53,7 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
       </p>
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-        <HomeClimateWidget indoor={indoorClimate} />
+        <HomeClimateWidget indoor={indoorClimate} outdoor={outdoorClimate} />
         <ReminderWidget reminders={dueReminders} users={users} />
         <ShoppingWidget lists={shoppingLists} />
         <CleaningWidget
