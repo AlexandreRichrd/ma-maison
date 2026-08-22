@@ -73,7 +73,7 @@ export function CalendarGrid({
               <button
                 type="button"
                 onClick={() => onAddClick(date)}
-                className={`mb-1.5 flex min-h-11 w-full items-center justify-between rounded-lg border border-border px-2.5 text-left ${
+                className={`mb-1.5 flex min-h-11 w-full cursor-pointer items-center justify-between rounded-lg border border-border px-2.5 text-left transition-colors hover:border-accent ${
                   today ? "bg-nav-active" : "bg-card"
                 }`}
               >
