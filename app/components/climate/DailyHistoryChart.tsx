@@ -1,87 +1,118 @@
+import {
+  CategoryScale,
+  Chart as ChartJS,
+  Filler,
+  Legend,
+  LinearScale,
+  LineElement,
+  PointElement,
+  Tooltip,
+  type ChartOptions,
+} from "chart.js";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
+import { Line } from "react-chartjs-2";
 
-import { buildChartGeometry } from "~/lib/climate-history";
 import type { ClimateSummaryReading } from "~/lib/climate-summary-api.server";
 import { parseIsoDate } from "~/lib/day";
 
-const CHART_WIDTH = 600;
-const CHART_HEIGHT = 140;
-const PADDING_Y = 16;
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
 
 function formatDayLabel(isoDate: string): string {
   return format(parseIsoDate(isoDate), "d MMM", { locale: fr });
 }
 
+// Mirrors app.css's --color-climate-inside-*/--color-climate-outside-*
+// tokens — duplicated as literal oklch() values (valid canvas colors)
+// rather than read from CSS at runtime, since Chart.js draws on a
+// <canvas>, not through the DOM/Tailwind. Keep in sync with app.css if
+// those tokens change.
+const TONE_COLORS = {
+  inside: { line: "oklch(42% 0.03 140)", band: "oklch(78% 0.1 140 / 30%)", edge: "oklch(78% 0.1 140 / 60%)" },
+  outside: { line: "oklch(45% 0.02 220)", band: "oklch(80% 0.08 220 / 30%)", edge: "oklch(80% 0.08 220 / 60%)" },
+} as const;
+
 /**
- * One point per day: a vertical line for the min-max range, a dot for the
- * average — no charting library, the data is simple enough (one reading
- * per day per metric) for a hand-rolled SVG. `accentClassName` sets the
- * mark color via `currentColor` (e.g. one of the climate-inside-… /
- * climate-outside-… tokens `HomeClimateWidget` already uses), so this
- * component stays device-agnostic.
+ * One line per metric: daily average as a solid curve, with a shaded
+ * min-max band behind it — Chart.js gives real, labeled axes and
+ * gridlines for free, which a hand-rolled SVG was falling short on.
  */
 export function DailyHistoryChart({
   readings,
   unit,
-  accentClassName = "text-accent",
+  tone = "inside",
 }: {
   readings: ClimateSummaryReading[];
   unit: string;
-  accentClassName?: string;
+  tone?: "inside" | "outside";
 }) {
   if (readings.length === 0) {
     return <p className="text-sm text-muted">Pas encore de données pour cette période.</p>;
   }
 
-  const { points, domainMin, domainMax } = buildChartGeometry(readings, {
-    width: CHART_WIDTH,
-    height: CHART_HEIGHT,
-    paddingY: PADDING_Y,
-  });
+  const colors = TONE_COLORS[tone];
+  const labels = readings.map((reading) => formatDayLabel(reading.date));
+
+  const data = {
+    labels,
+    datasets: [
+      {
+        label: "Max",
+        data: readings.map((reading) => reading.max),
+        borderColor: colors.edge,
+        borderWidth: 1,
+        pointRadius: 0,
+        tension: 0.3,
+        fill: false,
+      },
+      {
+        label: "Min",
+        data: readings.map((reading) => reading.min),
+        borderColor: colors.edge,
+        borderWidth: 1,
+        pointRadius: 0,
+        tension: 0.3,
+        backgroundColor: colors.band,
+        fill: "-1" as const,
+      },
+      {
+        label: "Moyenne",
+        data: readings.map((reading) => reading.avg),
+        borderColor: colors.line,
+        backgroundColor: colors.line,
+        borderWidth: 2.5,
+        pointRadius: 3,
+        pointHoverRadius: 5,
+        tension: 0.3,
+        fill: false,
+      },
+    ],
+  };
+
+  const options: ChartOptions<"line"> = {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: "index", intersect: false },
+    plugins: {
+      legend: { position: "top", labels: { boxHeight: 8, boxWidth: 8, usePointStyle: true } },
+      tooltip: {
+        callbacks: {
+          label: (item) => `${item.dataset.label} : ${item.formattedValue} ${unit}`,
+        },
+      },
+    },
+    scales: {
+      x: { grid: { display: false } },
+      y: {
+        title: { display: true, text: unit },
+        grid: { color: "oklch(90% 0 0)" },
+      },
+    },
+  };
 
   return (
-    <div>
-      <div className="mb-1 flex items-baseline justify-between text-xs text-muted">
-        <span>
-          {domainMax !== null ? `${domainMax.toFixed(1)} ${unit}` : ""}
-        </span>
-        <span>
-          {domainMin !== null ? `${domainMin.toFixed(1)} ${unit}` : ""}
-        </span>
-      </div>
-      <svg
-        viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`}
-        className={`w-full ${accentClassName}`}
-        role="img"
-        aria-label={`Historique quotidien (${unit}), du ${formatDayLabel(points[0].date)} au ${formatDayLabel(points[points.length - 1].date)}`}
-      >
-        {points.map((point, index) => {
-          const reading = readings[index];
-          return (
-            <g key={point.date}>
-              <line
-                x1={point.x}
-                x2={point.x}
-                y1={point.yMin}
-                y2={point.yMax}
-                stroke="currentColor"
-                strokeWidth={2.5}
-                strokeLinecap="round"
-                opacity={0.5}
-              />
-              <circle cx={point.x} cy={point.yAvg} r={3.5} fill="currentColor" />
-              <title>
-                {`${formatDayLabel(reading.date)} : ${reading.min.toFixed(1)}–${reading.max.toFixed(1)} ${unit}, moy. ${reading.avg.toFixed(1)} ${unit}`}
-              </title>
-            </g>
-          );
-        })}
-      </svg>
-      <div className="mt-1 flex justify-between text-xs text-muted">
-        <span>{formatDayLabel(points[0].date)}</span>
-        {points.length > 1 && <span>{formatDayLabel(points[points.length - 1].date)}</span>}
-      </div>
+    <div style={{ height: 220 }}>
+      <Line data={data} options={options} />
     </div>
   );
 }
