@@ -23,32 +23,40 @@ export function CalendarDayCell({
 
   return (
     <div
-      className={`flex min-h-[92px] flex-col gap-1 rounded-lg border p-1.5 ${
+      className={`relative flex min-h-[92px] flex-col gap-1 rounded-lg border p-1.5 ${
         dimmed ? "border-border bg-surface" : "border-border bg-card"
       } ${today ? "ring-1 ring-accent" : ""}`}
     >
+      {/* Fills the whole cell as the click target — a card-sized target,
+       * not just the date number — while staying a sibling (not an
+       * ancestor) of the reminder chips below, so their own toggle buttons
+       * still get the click instead of this one. `relative` on both the
+       * number and the reminders list below puts them in the same
+       * z-index:auto stacking layer as this absolute button, ordered by
+       * DOM position — since they come after it in markup, they paint on
+       * top and receive their own clicks; empty cell space still falls
+       * through to this button underneath. */}
       <button
         type="button"
         onClick={() => onAddClick(date)}
         aria-label={`Ajouter un rappel le ${format(date, "d MMMM", { locale: fr })}${today ? " (aujourd'hui)" : ""}`}
-        className="text-left"
+        className="absolute inset-0 rounded-lg"
+      />
+      <span
+        className={`relative pointer-events-none inline-flex size-5 items-center justify-center rounded-full text-xs font-semibold tabular-nums ${
+          today
+            ? "bg-accent text-accent-foreground"
+            : dimmed
+              ? "text-muted"
+              : "text-foreground"
+        }`}
       >
         {/* Today isn't conveyed by color alone — a filled circle (shape,
          * not just a border/tint) is the same convention most calendar UIs
          * use, so it reads even without color perception. */}
-        <span
-          className={`inline-flex size-5 items-center justify-center rounded-full text-xs font-semibold tabular-nums ${
-            today
-              ? "bg-accent text-accent-foreground"
-              : dimmed
-                ? "text-muted"
-                : "text-foreground"
-          }`}
-        >
-          {format(date, "d")}
-        </span>
-      </button>
-      <div className="flex flex-col gap-0.5 overflow-hidden">
+        {format(date, "d")}
+      </span>
+      <div className="relative flex flex-col gap-0.5 overflow-hidden">
         {reminders.map((reminder) => (
           <CompactReminderRow key={reminder.id} reminder={reminder} users={users} />
         ))}
