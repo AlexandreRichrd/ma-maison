@@ -53,8 +53,6 @@ export async function loader({ request, params }: Route.LoaderArgs) {
 
 export default function ClimateDeviceHistory({ loaderData }: Route.ComponentProps) {
   const { deviceName, label, series } = loaderData;
-  const accentClassName =
-    deviceName === "capteur-exterieur" ? "text-climate-outside-icon" : "text-climate-inside-icon";
 
   return (
     <div>
@@ -80,7 +78,7 @@ export default function ClimateDeviceHistory({ loaderData }: Route.ComponentProp
                 <DailyHistoryChart
                   readings={metricSeries.readings}
                   unit={metric.unit}
-                  accentClassName={accentClassName}
+                  tone={deviceName === "capteur-exterieur" ? "outside" : "inside"}
                 />
               </div>
             );
