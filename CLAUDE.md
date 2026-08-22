@@ -137,11 +137,44 @@ itself is not this repo's concern.
   order, or the pairing could flip depending on who's signed in.
 
 ### Reminders
-Flat list with time and a done/undo toggle. Reversible; there is no
-delete-on-complete. `+ Add reminder` opens the shared Modal (title,
-due date/time, and assignee checkboxes — either or both users); no
-edit or delete yet. Each assignee shows as a chip colored the same as
-that user's avatar elsewhere in the UI.
+Three view modes — `list` (the original flat list, still useful for "what's
+coming up" chronologically), `week` (default), and `month` — chosen via a
+`?view=` search param, always paired with `?week=` (an ISO week string,
+reused from Cleaning's convention — see `lib/week.ts`). Both live in the URL,
+never component state, so reload/share reproduces the same displayed period
+and mode; the loader canonicalizes and redirects if either is missing or
+invalid. Week and month share one `CalendarGrid` component — week view is
+just a one-row month grid, month view is `lib/week.ts`'s `monthGridWeeks()`
+tiling the full calendar month (4-6 rows), with the leading/trailing days
+outside the current month dimmed. `←`/`→` (`CalendarNavigator`) shifts by
+one ISO week in week mode, by a calendar month in month mode
+(`shiftIsoWeekByMonths`).
+
+Chores are explicitly out of this — they stay in Cleaning's own week
+navigator, own URL param, and never appear on this calendar.
+
+Below the `sm:` breakpoint, both week and month render as a vertical agenda
+(one section per day, reusing `ReminderRow` as-is) instead of a 7-column
+grid — a real grid doesn't fit a phone width for reminder titles/chips. At
+`sm:` and up, each day is a `CalendarDayCell` holding compact
+`CompactReminderRow` chips (a deliberately smaller tap target than the
+app's usual ≥44px rule — this view only renders on non-mobile widths, where
+mobile's own agenda already has full-size `ReminderRow` controls).
+
+`+ Add reminder` opens the shared Modal (title, due date/time, and assignee
+checkboxes — either or both users); no edit or delete yet. Clicking a day
+cell's date (week/month views) opens the same modal with that date
+pre-filled in the "Date et heure" field. Each assignee shows as a chip (or,
+in the compact grid chip, a small dot) colored the same as that user's
+avatar elsewhere in the UI. Done/undo is reversible — there is no
+delete-on-complete — and stays a `useFetcher` mutation everywhere it
+appears, list or calendar: no navigation, no scroll jump.
+
+`getReminders()` (`lib/reminders-api.server.ts`) takes an optional
+`{ from, to }` range: omitted for the list view (every reminder ever
+created), passed for week/month so only the visible days' worth is fetched
+— see `my-home-backend/CLAUDE.md`'s Reminders section for why this matters
+(no delete-on-complete means the unfiltered list only grows).
 
 ### Household
 User list (name and avatar), plus `+ Inviter un membre`: any signed-in user can send
