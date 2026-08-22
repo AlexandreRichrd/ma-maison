@@ -16,5 +16,6 @@ export default [
     route("cleaning", "routes/cleaning.tsx"),
     route("reminders", "routes/reminders.tsx"),
     route("household", "routes/household.tsx"),
+    route("climate/:deviceName", "routes/climate.$deviceName.tsx"),
   ]),
 ] satisfies RouteConfig;
