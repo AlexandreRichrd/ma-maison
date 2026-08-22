@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useRevalidator } from "react-router";
+import { Link, useRevalidator } from "react-router";
 
 import { Card } from "~/components/ui";
 import type { IndoorClimate, OutdoorClimate } from "~/lib/climate-api.server";
@@ -114,7 +114,10 @@ export function HomeClimateWidget({
     <Card className="sm:col-span-2">
       <h2 className="mb-3.5 font-serif text-lg font-semibold">Climat de la maison</h2>
       <div className="grid grid-cols-1 gap-4 min-[420px]:grid-cols-2">
-        <div className="flex items-center gap-3.5 rounded-xl bg-climate-outside-bg px-4 py-3.5">
+        <Link
+          to="/climate/capteur-exterieur"
+          className="flex items-center gap-3.5 rounded-xl bg-climate-outside-bg px-4 py-3.5 transition-opacity hover:opacity-90"
+        >
           <div className="size-10 shrink-0 rounded-full bg-climate-outside-icon" />
           <div>
             <div className="mb-0.5 text-xs font-semibold tracking-wide text-climate-outside-text uppercase">
@@ -140,8 +143,11 @@ export function HomeClimateWidget({
               <div className="text-sm text-muted">Aucune donnée du capteur extérieur</div>
             )}
           </div>
-        </div>
-        <div className="flex items-center gap-3.5 rounded-xl bg-climate-inside-bg px-4 py-3.5">
+        </Link>
+        <Link
+          to="/climate/capteur-salon"
+          className="flex items-center gap-3.5 rounded-xl bg-climate-inside-bg px-4 py-3.5 transition-opacity hover:opacity-90"
+        >
           <div className="size-10 shrink-0 rounded-full bg-climate-inside-icon" />
           <div>
             <div className="mb-0.5 text-xs font-semibold tracking-wide text-climate-inside-text uppercase">
@@ -167,7 +173,7 @@ export function HomeClimateWidget({
               <div className="text-sm text-muted">Aucune donnée du capteur intérieur</div>
             )}
           </div>
-        </div>
+        </Link>
       </div>
     </Card>
   );
