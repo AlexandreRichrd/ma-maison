@@ -89,6 +89,18 @@ Read-only overview, one loader aggregating four sources:
 
 Every widget links into its owning section. No mutations happen here.
 
+Both climate blocks (Intérieur/Extérieur) are also links to
+`/climate/:deviceName` — a per-sensor history view (min/max/avg per day,
+last 30 days, one simple hand-rolled SVG chart per metric — see
+`lib/climate-history.ts` and `components/climate/DailyHistoryChart.tsx`)
+backed by `my-home-backend`'s `GET /climate/summaries` (see its
+`CLAUDE.md`'s Daily summaries and retention section). **Not a seventh
+sidebar section** — same pattern as `shopping/:listId` and
+`recipes/:recipeId`: reachable by clicking through from where it's
+relevant, not nav-level. Deliberately no charting library and no
+date-range navigation for now — the data really is one point per day per
+metric, and this app already has no charting dependency to reuse.
+
 ### Shopping
 - **Overview** — one card per list with open-item count, plus `+ New list`
 - **Detail** — checkable items with quantity, plus `+ Add item`
@@ -197,6 +209,7 @@ app/
     cleaning.tsx           # ?week=2026-W32
     reminders.tsx
     household.tsx
+    climate.$deviceName.tsx # per-sensor history, linked from the Dashboard widget
     register.tsx           # public, requires ?token= from an invite
     activate.tsx           # public, consumes the emailed activation link
     forgot-password.tsx    # public, email -> same confirmation either way
@@ -210,6 +223,7 @@ app/
     cleaning/
     reminders/
     household/            # ChoresSection.tsx — chore admin CRUD
+    climate/               # DailyHistoryChart.tsx — per-sensor history chart
   lib/
     api.server.ts         # fetch wrapper: base URL, JWT header, error mapping,
                             #   401 -> clear session + redirect to /login
