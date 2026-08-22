@@ -1,7 +1,6 @@
-import { format, isSameDay } from "date-fns";
-import { fr } from "date-fns/locale";
+import { isSameDay } from "date-fns";
 
-import { formatIsoDate } from "~/lib/day";
+import { formatDayLabel, formatIsoDate } from "~/lib/day";
 import type { HouseholdMember } from "~/lib/household-api.server";
 import type { Reminder } from "~/lib/reminders-api.server";
 import { isInMonthOf, isoWeekDays } from "~/lib/week";
@@ -74,12 +73,16 @@ export function CalendarGrid({
               <button
                 type="button"
                 onClick={() => onAddClick(date)}
-                className={`mb-1.5 flex min-h-11 w-full items-center justify-between rounded-lg px-1 text-left ${
-                  today ? "text-accent" : "text-foreground"
+                className={`mb-1.5 flex min-h-11 w-full items-center justify-between rounded-lg border border-border px-2.5 text-left ${
+                  today ? "bg-nav-active" : "bg-card"
                 }`}
               >
-                <span className="text-sm font-semibold capitalize">
-                  {format(date, "EEEE d MMMM", { locale: fr })}
+                {/* formatDayLabel prefixes "Aujourd'hui · " itself (see
+                 * day.ts) — same non-color-only signal DayNavigator already
+                 * uses for Cleaning, reused rather than a second "today"
+                 * convention that depends on color alone. */}
+                <span className="text-sm font-semibold text-foreground">
+                  {formatDayLabel(formatIsoDate(date))}
                 </span>
                 <span className="text-xs font-semibold text-muted">+ Ajouter</span>
               </button>

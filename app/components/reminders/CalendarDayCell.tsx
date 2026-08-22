@@ -24,16 +24,29 @@ export function CalendarDayCell({
   return (
     <div
       className={`flex min-h-[92px] flex-col gap-1 rounded-lg border p-1.5 ${
-        today ? "border-accent" : "border-border"
-      } ${dimmed ? "opacity-40" : ""}`}
+        dimmed ? "border-border bg-surface" : "border-border bg-card"
+      } ${today ? "ring-1 ring-accent" : ""}`}
     >
       <button
         type="button"
         onClick={() => onAddClick(date)}
-        aria-label={`Ajouter un rappel le ${format(date, "d MMMM", { locale: fr })}`}
-        className="text-left text-xs font-semibold tabular-nums text-foreground"
+        aria-label={`Ajouter un rappel le ${format(date, "d MMMM", { locale: fr })}${today ? " (aujourd'hui)" : ""}`}
+        className="text-left"
       >
-        {format(date, "d")}
+        {/* Today isn't conveyed by color alone — a filled circle (shape,
+         * not just a border/tint) is the same convention most calendar UIs
+         * use, so it reads even without color perception. */}
+        <span
+          className={`inline-flex size-5 items-center justify-center rounded-full text-xs font-semibold tabular-nums ${
+            today
+              ? "bg-accent text-accent-foreground"
+              : dimmed
+                ? "text-muted"
+                : "text-foreground"
+          }`}
+        >
+          {format(date, "d")}
+        </span>
       </button>
       <div className="flex flex-col gap-0.5 overflow-hidden">
         {reminders.map((reminder) => (
