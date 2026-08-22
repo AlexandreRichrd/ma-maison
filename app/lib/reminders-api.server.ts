@@ -37,9 +37,16 @@ function toReminder(dto: ReminderDto): Reminder {
   };
 }
 
-export async function getReminders(request: Request): Promise<Reminder[]> {
+/** `range` omitted returns every reminder ever created (the flat list);
+ * passed, only reminders due within [from, to] inclusive (the week/month
+ * calendar views) — see my-home-backend's GET /reminders. */
+export async function getReminders(
+  request: Request,
+  range?: { from: string; to: string },
+): Promise<Reminder[]> {
   const accessToken = await getAccessToken(request);
-  const dtos = await apiFetch<ReminderDto[]>("/reminders", { accessToken });
+  const query = range ? `?from=${range.from}&to=${range.to}` : "";
+  const dtos = await apiFetch<ReminderDto[]>(`/reminders${query}`, { accessToken });
   return dtos.map(toReminder);
 }
 
