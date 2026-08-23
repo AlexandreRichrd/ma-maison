@@ -32,7 +32,7 @@ export default function AppLayout({ loaderData }: Route.ComponentProps) {
 
       <div className="flex min-h-0 flex-1">
         <Sidebar users={users} />
-        <main className="min-w-0 flex-1 px-4 py-5 nav:max-w-[1120px] nav:px-11 nav:py-9">
+        <main className="min-w-0 flex-1 px-4 py-5 nav:ml-[232px] nav:max-w-[1120px] nav:px-11 nav:py-9">
           <Outlet />
         </main>
       </div>
