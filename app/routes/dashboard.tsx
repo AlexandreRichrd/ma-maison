@@ -42,6 +42,9 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
   const currentUser = users.find((user) => user.id === currentUserId);
   const orderedDayChores = withCurrentUserFirst(dayChores, currentUserId);
   const orderedWeekChores = withCurrentUserFirst(weekChores, currentUserId);
+  const myDueReminders = dueReminders.filter((reminder) =>
+    reminder.assigneeIds.includes(currentUserId),
+  );
 
   return (
     <div>
@@ -54,7 +57,7 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
         <HomeClimateWidget indoor={indoorClimate} outdoor={outdoorClimate} />
-        <ReminderWidget reminders={dueReminders} users={users} />
+        <ReminderWidget reminders={myDueReminders} users={users} />
         <ShoppingWidget lists={shoppingLists} />
         <CleaningWidget
           dayChores={orderedDayChores}

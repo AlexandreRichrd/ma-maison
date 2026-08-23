@@ -15,7 +15,7 @@ export function ReminderWidget({
   return (
     <Card className="sm:col-span-2">
       <div className="mb-3.5 flex items-center justify-between">
-        <h2 className="font-serif text-lg font-semibold">Rappels du jour</h2>
+        <h2 className="font-serif text-lg font-semibold">Mes rappels du jour</h2>
         <Link to="/reminders" className="text-sm font-semibold">
           Tout voir →
         </Link>
