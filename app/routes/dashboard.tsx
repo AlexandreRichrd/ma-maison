@@ -3,7 +3,6 @@ import { HomeClimateWidget } from "~/components/dashboard/HomeClimateWidget";
 import { ReminderWidget } from "~/components/dashboard/ReminderWidget";
 import { ShoppingWidget } from "~/components/dashboard/ShoppingWidget";
 import { requireUser } from "~/lib/auth.server";
-import { withCurrentUserFirst } from "~/lib/cleaning-order";
 import { getDashboardData } from "~/lib/dashboard.server";
 import { getOrderedUsers } from "~/lib/household-api.server";
 
@@ -40,8 +39,8 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
     currentUserId,
   } = loaderData;
   const currentUser = users.find((user) => user.id === currentUserId);
-  const orderedDayChores = withCurrentUserFirst(dayChores, currentUserId);
-  const orderedWeekChores = withCurrentUserFirst(weekChores, currentUserId);
+  const myDayChores = dayChores.find((entry) => entry.user.id === currentUserId)?.chores ?? [];
+  const myWeekChores = weekChores.find((entry) => entry.user.id === currentUserId)?.chores ?? [];
   const myDueReminders = dueReminders.filter((reminder) =>
     reminder.assigneeIds.includes(currentUserId),
   );
@@ -59,11 +58,7 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
         <HomeClimateWidget indoor={indoorClimate} outdoor={outdoorClimate} />
         <ReminderWidget reminders={myDueReminders} users={users} />
         <ShoppingWidget lists={shoppingLists} />
-        <CleaningWidget
-          dayChores={orderedDayChores}
-          weekChores={orderedWeekChores}
-          stableOrderUserIds={users.map((user) => user.id)}
-        />
+        <CleaningWidget dayChores={myDayChores} weekChores={myWeekChores} />
       </div>
     </div>
   );
