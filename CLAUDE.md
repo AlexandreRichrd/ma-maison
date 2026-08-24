@@ -122,6 +122,25 @@ transaction. This app just calls it and shows the result — see the
 Recipes section confirmation-copy note under UI conventions; the merge logic
 itself is not this repo's concern.
 
+- **Create/edit** (`/recipes/new`, `/recipes/:recipeId/edit`) — a dedicated
+  page, not the usual `<Modal>`: `RecipeForm`
+  (`components/recipes/RecipeForm.tsx`) holds the ingredient and step lists
+  as local component state (add/remove/reorder, `↑`/`↓`/`×` per row, same
+  interaction as `ChoresSection.tsx`'s subtask editor) and submits both as
+  one hidden JSON-string field each on save — the whole recipe is one
+  document, not persisted row-by-row. `PATCH /recipes/:id` replaces the
+  full ingredients/steps arrays server-side; there's no per-row endpoint.
+- **Delete** — a confirmation `<Modal>` on the detail page (same pattern as
+  `ChoresSection.tsx`'s delete modal), redirects to `/recipes` on success.
+  Shopping items already sourced from a deleted recipe stay on their list
+  (`source_recipe_id` nulled, not removed — enforced by the backend).
+- Ingredient units are a closed list (`lib/units.ts`'s `Unit`, mirroring
+  the backend's enum by hand) rendered through `unitLabel()` — a French
+  label, singular/plural by quantity — never the raw enum value. The
+  shopping item "add" form uses the same list for the same reason (see
+  `my-home-backend/CLAUDE.md`'s Database section on why `shopping_items`
+  and `recipe_ingredients` share one enum).
+
 ### Cleaning
 - Week navigator (`←` / `→`), driven by a `?week=` search param holding an ISO
   week string (`2026-W32`). Never keep the current week in component state: the
@@ -237,8 +256,10 @@ app/
     dashboard.tsx
     shopping.tsx           # list overview
     shopping.$listId.tsx   # list detail
-    recipes.tsx            # recipe overview
-    recipes.$recipeId.tsx  # recipe detail + add-to-list actions
+    recipes.tsx               # recipe overview
+    recipes.new.tsx           # create form
+    recipes.$recipeId.tsx     # recipe detail + add-to-list actions
+    recipes.$recipeId.edit.tsx # edit form
     cleaning.tsx           # ?week=2026-W32
     reminders.tsx
     household.tsx
@@ -252,7 +273,7 @@ app/
     layout/              # Sidebar, PageHeader
     dashboard/
     shopping/
-    recipes/
+    recipes/              # RecipeForm.tsx — create/edit form, ingredient+step lists
     cleaning/
     reminders/
     household/            # ChoresSection.tsx — chore admin CRUD
@@ -267,6 +288,7 @@ app/
     week.ts                # ISO week parsing and navigation (display only)
     validation.ts          # form-side validation that mirrors API error codes
     chores-api.server.ts   # chore config CRUD client
+    units.ts                # closed Unit list + French labels (recipes, shopping)
 ```
 
 `app/db/` still exists, but only for local dev seeding (`npm run db:seed`)
@@ -545,7 +567,6 @@ Do not build these unless explicitly asked:
   reminder assignees for more than two people — invites can technically
   create a third+ user today, but nothing downstream of that has been
   redesigned to handle it (see Chore rotation, Project intro)
-- Recipe creation and editing — the app reads recipes; seed them for now
 - Servings scaling of ingredient quantities
 - Store tags on shopping items
 - Push or in-app notifications (transactional invite/activation/password-reset
