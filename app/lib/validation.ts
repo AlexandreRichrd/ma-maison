@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { isValidIsoDate } from "./day";
+import { UNITS } from "./units";
 
 export const loginSchema = z.object({
   email: z.email("Adresse email invalide").trim(),
@@ -52,7 +53,7 @@ export const addItemSchema = z.object({
     .trim()
     .min(1, "La quantité est requise")
     .regex(/^\d+(\.\d+)?$/, "La quantité doit être un nombre"),
-  unit: z.string().trim().max(40).optional().default(""),
+  unit: z.enum(UNITS).optional().default("UNITE"),
 });
 
 export const toggleItemSchema = z.object({
@@ -67,6 +68,62 @@ export const addToExistingListSchema = z.object({
 
 export const addAsNewListSchema = z.object({
   intent: z.literal("addAsNewList"),
+});
+
+const recipeIngredientSchema = z.object({
+  name: z.string().trim().min(1, "Le nom de l'ingrédient est requis"),
+  quantity: z
+    .string()
+    .trim()
+    .min(1, "La quantité est requise")
+    .regex(/^\d+(\.\d+)?$/, "La quantité doit être un nombre"),
+  unit: z.enum(UNITS),
+});
+
+const recipeStepSchema = z.object({
+  text: z.string().trim().min(1, "L'étape ne peut pas être vide"),
+});
+
+/** Ingredients/steps arrive as one hidden JSON-string input each (RecipeForm) — parse then validate. */
+function jsonArray<T extends z.ZodType>(itemSchema: T, emptyMessage: string) {
+  return z
+    .string()
+    .transform((raw, ctx) => {
+      try {
+        return JSON.parse(raw) as unknown;
+      } catch {
+        ctx.addIssue({ code: "custom", message: "Format invalide" });
+        return z.NEVER;
+      }
+    })
+    .pipe(z.array(itemSchema).min(1, emptyMessage));
+}
+
+const recipeFieldsSchema = {
+  name: z.string().trim().min(1, "Le nom de la recette est requis"),
+  servings: z
+    .string()
+    .trim()
+    .regex(/^\d+$/, "Doit être un nombre entier")
+    .refine((value) => Number(value) >= 1, "Doit être au moins 1"),
+  ingredients: jsonArray(recipeIngredientSchema, "Ajoutez au moins un ingrédient"),
+  steps: jsonArray(recipeStepSchema, "Ajoutez au moins une étape"),
+};
+
+export const addRecipeSchema = z.object({
+  intent: z.literal("addRecipe"),
+  ...recipeFieldsSchema,
+});
+
+export const editRecipeSchema = z.object({
+  intent: z.literal("editRecipe"),
+  recipeId: z.uuid(),
+  ...recipeFieldsSchema,
+});
+
+export const deleteRecipeSchema = z.object({
+  intent: z.literal("deleteRecipe"),
+  recipeId: z.uuid(),
 });
 
 export const toggleChoreSchema = z.object({
