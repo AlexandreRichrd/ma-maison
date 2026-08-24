@@ -1,11 +1,13 @@
-import { data, redirect, useFetcher } from "react-router";
+import { useState } from "react";
+import { data, Link, redirect, useFetcher } from "react-router";
 
 import { PageHeader } from "~/components/layout/PageHeader";
-import { Button, cardClassName } from "~/components/ui";
+import { Button, cardClassName, Modal } from "~/components/ui";
 import { ApiRequestError, mapApiErrors } from "~/lib/api.server";
-import { getRecipeDetail } from "~/lib/recipes-api.server";
+import { deleteRecipe, getRecipeDetail } from "~/lib/recipes-api.server";
 import { addIngredientsToList, getShoppingLists } from "~/lib/shopping-api.server";
-import { addAsNewListSchema, addToExistingListSchema } from "~/lib/validation";
+import { unitLabel } from "~/lib/units";
+import { addAsNewListSchema, addToExistingListSchema, deleteRecipeSchema } from "~/lib/validation";
 
 import type { Route } from "./+types/recipes.$recipeId";
 
@@ -56,6 +58,15 @@ export async function action({ request, params }: Route.ActionArgs) {
       });
       return redirect(`/shopping/${outcome.listId}`);
     }
+
+    if (intent === "deleteRecipe") {
+      const result = deleteRecipeSchema.safeParse(Object.fromEntries(formData));
+      if (!result.success) {
+        return data({ errors: result.error.flatten().fieldErrors }, { status: 400 });
+      }
+      await deleteRecipe(request, result.data.recipeId);
+      return redirect("/recipes");
+    }
   } catch (error) {
     if (error instanceof ApiRequestError) {
       return data({ errors: mapApiErrors(error.errors) }, { status: error.status });
@@ -67,9 +78,11 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 export default function RecipeDetail({ loaderData }: Route.ComponentProps) {
-  const { recipe, ingredients, shoppingLists } = loaderData;
+  const { recipe, ingredients, steps, shoppingLists } = loaderData;
   const existingFetcher = useFetcher<typeof action>();
   const newListFetcher = useFetcher<typeof action>();
+  const deleteFetcher = useFetcher();
+  const [deleting, setDeleting] = useState(false);
 
   const confirmation = (() => {
     const result = existingFetcher.data;
@@ -90,6 +103,19 @@ export default function RecipeDetail({ loaderData }: Route.ComponentProps) {
         back={{ to: "/recipes", label: "← Toutes les recettes" }}
         title={recipe.name}
         subtitle={`${recipe.servings} portions`}
+        action={
+          <div className="flex gap-2.5">
+            <Link
+              to={`/recipes/${recipe.id}/edit`}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-foreground transition-colors hover:bg-surface"
+            >
+              Modifier
+            </Link>
+            <Button variant="secondary" onClick={() => setDeleting(true)}>
+              Supprimer
+            </Button>
+          </div>
+        }
       />
 
       <div className={`${cardClassName} mb-6 max-w-[520px] overflow-hidden p-0`}>
@@ -101,11 +127,29 @@ export default function RecipeDetail({ loaderData }: Route.ComponentProps) {
             <span className="text-[15px] font-medium">{ingredient.name}</span>
             <span className="text-sm font-medium text-muted">
               {ingredient.quantity}
-              {ingredient.unit ? ` ${ingredient.unit}` : ""}
+              {unitLabel(ingredient.unit, ingredient.quantity)
+                ? ` ${unitLabel(ingredient.unit, ingredient.quantity)}`
+                : ""}
             </span>
           </div>
         ))}
       </div>
+
+      {steps.length > 0 && (
+        <div className={`${cardClassName} mb-6 max-w-[520px]`}>
+          <div className="mb-2.5 text-xs font-semibold tracking-wide text-muted uppercase">
+            Préparation
+          </div>
+          <ol className="flex flex-col gap-2.5">
+            {steps.map((step, index) => (
+              <li key={step.id} className="flex gap-2.5 text-[15px]">
+                <span className="shrink-0 font-semibold text-muted">{index + 1}.</span>
+                <span>{step.text}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
 
       <div className="max-w-[520px]">
         <div className="mb-2.5 text-xs font-semibold tracking-wide text-muted uppercase">
@@ -140,6 +184,21 @@ export default function RecipeDetail({ loaderData }: Route.ComponentProps) {
           </p>
         )}
       </div>
+
+      <Modal
+        open={deleting}
+        title={`Supprimer « ${recipe.name} » ?`}
+        onClose={() => setDeleting(false)}
+        fetcher={deleteFetcher}
+        submitLabel="Supprimer"
+      >
+        <input type="hidden" name="intent" value="deleteRecipe" />
+        <input type="hidden" name="recipeId" value={recipe.id} />
+        <p className="text-sm font-medium text-muted">
+          Les articles déjà ajoutés à une liste de courses depuis cette recette resteront sur
+          leur liste. Cette action est irréversible.
+        </p>
+      </Modal>
     </div>
   );
 }
