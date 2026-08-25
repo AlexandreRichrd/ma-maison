@@ -13,6 +13,7 @@ import {
   chores,
   households,
   recipeIngredients,
+  recipeSteps,
   recipes,
   reminders,
   shoppingItems,
@@ -37,6 +38,7 @@ async function main() {
   await db.delete(shoppingItems);
   await db.delete(shoppingLists);
   await db.delete(recipeIngredients);
+  await db.delete(recipeSteps);
   await db.delete(recipes);
   await db.delete(reminders);
   await db.delete(users);
@@ -111,40 +113,42 @@ async function main() {
     .returning();
 
   await db.insert(shoppingItems).values([
-    { listId: groceries.id, name: "Lait", quantity: "2", unit: "", checked: false },
-    { listId: groceries.id, name: "Œufs", quantity: "1", unit: "douzaine", checked: false },
-    { listId: groceries.id, name: "Pain", quantity: "1", unit: "miche", checked: true },
-    { listId: groceries.id, name: "Épinards", quantity: "1", unit: "sachet", checked: false },
-    { listId: costco.id, name: "Essuie-tout", quantity: "1", unit: "paquet", checked: false },
-    { listId: costco.id, name: "Blancs de poulet", quantity: "1", unit: "kg", checked: false },
+    { listId: groceries.id, name: "Lait", quantity: "2", unit: "UNITE", checked: false },
+    { listId: groceries.id, name: "Œufs", quantity: "1", unit: "DOUZAINE", checked: false },
+    { listId: groceries.id, name: "Pain", quantity: "1", unit: "MICHE", checked: true },
+    { listId: groceries.id, name: "Épinards", quantity: "1", unit: "SACHET", checked: false },
+    { listId: costco.id, name: "Essuie-tout", quantity: "1", unit: "PAQUET", checked: false },
+    { listId: costco.id, name: "Blancs de poulet", quantity: "1", unit: "KG", checked: false },
   ]);
 
   const [bolognese, stirFry] = await db
     .insert(recipes)
     .values([
-      {
-        name: "Spaghetti à la bolognaise",
-        servings: 4,
-        instructions: "Faire revenir le bœuf, ajouter la sauce, laisser mijoter, servir avec des pâtes.",
-      },
-      {
-        name: "Poêlée de légumes",
-        servings: 2,
-        instructions: "Faire sauter les légumes, ajouter la sauce, servir avec du riz.",
-      },
+      { name: "Spaghetti à la bolognaise", servings: 4 },
+      { name: "Poêlée de légumes", servings: 2 },
     ])
     .returning();
 
   await db.insert(recipeIngredients).values([
-    { recipeId: bolognese.id, name: "Bœuf haché", quantity: "500", unit: "g", position: 0 },
-    { recipeId: bolognese.id, name: "Spaghettis", quantity: "1", unit: "paquet", position: 1 },
-    { recipeId: bolognese.id, name: "Sauce tomate", quantity: "1", unit: "pot", position: 2 },
-    { recipeId: bolognese.id, name: "Oignon", quantity: "1", unit: "", position: 3 },
-    { recipeId: bolognese.id, name: "Ail", quantity: "2", unit: "gousses", position: 4 },
-    { recipeId: stirFry.id, name: "Brocoli", quantity: "1", unit: "tête", position: 0 },
-    { recipeId: stirFry.id, name: "Poivron", quantity: "2", unit: "", position: 1 },
-    { recipeId: stirFry.id, name: "Sauce soja", quantity: "1", unit: "bouteille", position: 2 },
-    { recipeId: stirFry.id, name: "Riz", quantity: "300", unit: "g", position: 3 },
+    { recipeId: bolognese.id, name: "Bœuf haché", quantity: "500", unit: "G", position: 0 },
+    { recipeId: bolognese.id, name: "Spaghettis", quantity: "1", unit: "PAQUET", position: 1 },
+    { recipeId: bolognese.id, name: "Sauce tomate", quantity: "1", unit: "POT", position: 2 },
+    { recipeId: bolognese.id, name: "Oignon", quantity: "1", unit: "UNITE", position: 3 },
+    { recipeId: bolognese.id, name: "Ail", quantity: "2", unit: "GOUSSE", position: 4 },
+    { recipeId: stirFry.id, name: "Brocoli", quantity: "1", unit: "TETE", position: 0 },
+    { recipeId: stirFry.id, name: "Poivron", quantity: "2", unit: "UNITE", position: 1 },
+    { recipeId: stirFry.id, name: "Sauce soja", quantity: "1", unit: "BOUTEILLE", position: 2 },
+    { recipeId: stirFry.id, name: "Riz", quantity: "300", unit: "G", position: 3 },
+  ]);
+
+  await db.insert(recipeSteps).values([
+    { recipeId: bolognese.id, text: "Faire revenir le bœuf", position: 0 },
+    { recipeId: bolognese.id, text: "Ajouter la sauce", position: 1 },
+    { recipeId: bolognese.id, text: "Laisser mijoter", position: 2 },
+    { recipeId: bolognese.id, text: "Servir avec des pâtes", position: 3 },
+    { recipeId: stirFry.id, text: "Faire sauter les légumes", position: 0 },
+    { recipeId: stirFry.id, text: "Ajouter la sauce", position: 1 },
+    { recipeId: stirFry.id, text: "Servir avec du riz", position: 2 },
   ]);
 
   const now = new Date();

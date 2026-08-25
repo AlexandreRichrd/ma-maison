@@ -3,13 +3,15 @@ import { data, useFetcher } from "react-router";
 
 import { PageHeader } from "~/components/layout/PageHeader";
 import { ShoppingItemRow } from "~/components/shopping/ShoppingItemRow";
-import { Button, cardClassName, Input, Modal } from "~/components/ui";
+import { Button, cardClassName, Input, Modal, Select } from "~/components/ui";
 import { ApiRequestError, mapApiErrors } from "~/lib/api.server";
 import {
   addShoppingItem,
   getShoppingListDetail,
   toggleShoppingItem,
 } from "~/lib/shopping-api.server";
+import { UNIT_OPTIONS } from "~/lib/units";
+import { addItemSchema } from "~/lib/validation";
 
 import type { Route } from "./+types/shopping.$listId";
 
@@ -39,11 +41,15 @@ export async function action({ request, params }: Route.ActionArgs) {
     }
 
     if (intent === "addItem") {
+      const result = addItemSchema.safeParse(Object.fromEntries(formData));
+      if (!result.success) {
+        return data({ errors: result.error.flatten().fieldErrors }, { status: 400 });
+      }
       await addShoppingItem(request, {
         listId: params.listId,
-        name: String(formData.get("name") ?? ""),
-        quantity: String(formData.get("quantity") ?? ""),
-        unit: String(formData.get("unit") ?? ""),
+        name: result.data.name,
+        quantity: result.data.quantity,
+        unit: result.data.unit,
       });
       return { ok: true };
     }
@@ -100,7 +106,13 @@ export default function ShoppingListDetail({ loaderData }: Route.ComponentProps)
             {quantityErrors[0]}
           </p>
         )}
-        <Input label="Unité (optionnel)" name="unit" placeholder="kg, boîte, sachet…" />
+        <Select label="Unité" name="unit" defaultValue="UNITE">
+          {UNIT_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </Select>
       </Modal>
     </div>
   );

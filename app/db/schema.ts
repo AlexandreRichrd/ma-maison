@@ -91,9 +91,32 @@ export const recipes = pgTable("recipes", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
   servings: integer("servings").notNull(),
-  instructions: text("instructions").notNull(),
   ...timestamps,
 });
+
+// Closed set of measurement units, shared by recipeIngredients.unit and
+// shoppingItems.unit — see my-home-backend/CLAUDE.md's Database section
+// for why this is a real DB enum rather than a validated string.
+export const unitEnum = pgEnum("unit", [
+  "G",
+  "KG",
+  "ML",
+  "L",
+  "CUILLERE_A_CAFE",
+  "CUILLERE_A_SOUPE",
+  "PINCEE",
+  "GOUSSE",
+  "TRANCHE",
+  "SACHET",
+  "PAQUET",
+  "BOITE",
+  "POT",
+  "BOUTEILLE",
+  "TETE",
+  "DOUZAINE",
+  "MICHE",
+  "UNITE",
+]);
 
 export const shoppingItems = pgTable("shopping_items", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -102,7 +125,7 @@ export const shoppingItems = pgTable("shopping_items", {
     .references(() => shoppingLists.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   quantity: numeric("quantity", { mode: "string" }).notNull(),
-  unit: text("unit").notNull(),
+  unit: unitEnum("unit").notNull(),
   checked: boolean("checked").notNull().default(false),
   sourceRecipeId: uuid("source_recipe_id").references(() => recipes.id, {
     onDelete: "set null",
@@ -117,7 +140,24 @@ export const recipeIngredients = pgTable("recipe_ingredients", {
     .references(() => recipes.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
   quantity: numeric("quantity", { mode: "string" }).notNull(),
-  unit: text("unit").notNull(),
+  unit: unitEnum("unit").notNull(),
+  position: integer("position").notNull(),
+  ...timestamps,
+});
+
+// Ordered steps, replacing the old free-text recipes.instructions column
+// — same shape as recipeIngredients/choreSubtasks.
+export const recipeSteps = pgTable("recipe_steps", {
+  // $defaultFn, not .defaultRandom() — created by a hand-written Prisma
+  // migration with no DB-level default, same reasoning as
+  // choreSubtasks.id below.
+  id: uuid("id")
+    .$defaultFn(() => crypto.randomUUID())
+    .primaryKey(),
+  recipeId: uuid("recipe_id")
+    .notNull()
+    .references(() => recipes.id, { onDelete: "cascade" }),
+  text: text("text").notNull(),
   position: integer("position").notNull(),
   ...timestamps,
 });
@@ -283,6 +323,7 @@ export const shoppingItemsRelations = relations(shoppingItems, ({ one }) => ({
 
 export const recipesRelations = relations(recipes, ({ many }) => ({
   ingredients: many(recipeIngredients),
+  steps: many(recipeSteps),
 }));
 
 export const recipeIngredientsRelations = relations(
@@ -294,6 +335,13 @@ export const recipeIngredientsRelations = relations(
     }),
   }),
 );
+
+export const recipeStepsRelations = relations(recipeSteps, ({ one }) => ({
+  recipe: one(recipes, {
+    fields: [recipeSteps.recipeId],
+    references: [recipes.id],
+  }),
+}));
 
 export const choresRelations = relations(chores, ({ one, many }) => ({
   anchorUser: one(users, {
@@ -339,6 +387,7 @@ export type ShoppingList = typeof shoppingLists.$inferSelect;
 export type ShoppingItem = typeof shoppingItems.$inferSelect;
 export type Recipe = typeof recipes.$inferSelect;
 export type RecipeIngredient = typeof recipeIngredients.$inferSelect;
+export type RecipeStep = typeof recipeSteps.$inferSelect;
 export type Chore = typeof chores.$inferSelect;
 export type ChoreSubtask = typeof choreSubtasks.$inferSelect;
 export type ChoreCompletion = typeof choreCompletions.$inferSelect;

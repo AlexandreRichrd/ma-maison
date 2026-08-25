@@ -111,6 +111,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   // Only reachable via a stale/replayed reorder — the UI always submits
   // every current subtask id.
   invalid_subtask_set: "La liste des sous-tâches a changé, réessayez",
+  at_least_one_required: "Ajoutez au moins un élément",
 };
 
 export function mapApiErrors(errors: ApiFieldError[]): Record<string, string[]> {

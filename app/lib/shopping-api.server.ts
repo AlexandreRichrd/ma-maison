@@ -1,5 +1,6 @@
 import { ApiRequestError, apiFetch } from "./api.server";
 import { getAccessToken } from "./auth.server";
+import type { Unit } from "./units";
 
 // Mirrors the API's JSON response shape, not the Drizzle-inferred
 // ~/db/schema types — dates cross the wire as ISO strings, not Date
@@ -18,7 +19,7 @@ export type ShoppingItemDto = {
   listId: string;
   name: string;
   quantity: string;
-  unit: string;
+  unit: Unit;
   checked: boolean;
   sourceRecipeId: string | null;
   createdAt: string;
@@ -63,7 +64,7 @@ export async function createShoppingList(request: Request, name: string): Promis
 
 export async function addShoppingItem(
   request: Request,
-  params: { listId: string; name: string; quantity: string; unit: string },
+  params: { listId: string; name: string; quantity: string; unit: Unit },
 ): Promise<void> {
   const accessToken = await getAccessToken(request);
   await apiFetch(`/shopping-lists/${params.listId}/items`, {

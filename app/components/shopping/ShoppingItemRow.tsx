@@ -1,6 +1,7 @@
 import { useFetcher } from "react-router";
 
 import type { ShoppingItemDto } from "~/lib/shopping-api.server";
+import { unitLabel } from "~/lib/units";
 
 export function ShoppingItemRow({ item }: { item: ShoppingItemDto }) {
   const fetcher = useFetcher();
@@ -26,7 +27,7 @@ export function ShoppingItemRow({ item }: { item: ShoppingItemDto }) {
       </span>
       <span className="text-sm font-medium text-muted">
         {item.quantity}
-        {item.unit ? ` ${item.unit}` : ""}
+        {unitLabel(item.unit, item.quantity) ? ` ${unitLabel(item.unit, item.quantity)}` : ""}
       </span>
     </fetcher.Form>
   );
