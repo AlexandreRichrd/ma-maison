@@ -215,6 +215,27 @@ nothing else in the app currently needs a destructive-action confirmation.
 The anchor-week field is a native `<input type="week">` — its value format
 (`YYYY-Www`) already matches `isValidIsoWeek()`, no custom picker needed.
 
+Below Corvées, a **Paramètres** card
+(`components/household/HouseholdSettingsSection.tsx`, issue #11) is the
+settings area referenced in the same "Household already functions as the
+household-configuration page" reasoning above — a card, not a tab or a new
+route, since the settings list is short enough that one card doesn't feel
+cluttered (revisit if that changes). It covers the climate cool-down/
+close-up alert (enabled switch, outdoor/indoor margin, indoor comfort
+threshold, cooldown) and raw-measure retention — backed by
+`my-home-backend`'s `GET/PATCH /settings` (`lib/settings-api.server.ts`),
+see that repo's `CLAUDE.md` Climate alerts section. Same `<Modal>`-based
+edit pattern as Corvées: one shared modal, a hidden field mirrors the
+enabled checkbox as an explicit `"true"`/`"false"` string (an unchecked
+native checkbox omits itself from `FormData` entirely, which a
+partial-update `PATCH` can't tell apart from "field not touched"). Below
+that, a checkbox per household member controls
+`receiveClimateAlerts` — the one per-user setting in issue #11 — each its
+own `useFetcher` with the same optimistic-flip-while-pending pattern as
+`ShoppingItemRow.tsx`, submitting a hand-built `FormData` rather than a
+real `<form>` (same technique `ChoresSection.tsx`'s subtask reorder
+buttons already use), since the row isn't itself inside a form element.
+
 ## Chore rotation
 
 The core domain rule, but it is **not implemented here**. Each chore now
@@ -276,7 +297,7 @@ app/
     recipes/              # RecipeForm.tsx — create/edit form, ingredient+step lists
     cleaning/
     reminders/
-    household/            # ChoresSection.tsx — chore admin CRUD
+    household/            # ChoresSection.tsx — chore admin CRUD; HouseholdSettingsSection.tsx — settings card
     climate/               # DailyHistoryChart.tsx — per-sensor history chart
   lib/
     api.server.ts         # fetch wrapper: base URL, JWT header, error mapping,
@@ -288,6 +309,7 @@ app/
     week.ts                # ISO week parsing and navigation (display only)
     validation.ts          # form-side validation that mirrors API error codes
     chores-api.server.ts   # chore config CRUD client
+    settings-api.server.ts # household_settings GET/PATCH client
     units.ts                # closed Unit list + French labels (recipes, shopping)
 ```
 
