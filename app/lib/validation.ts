@@ -207,3 +207,40 @@ export const addReminderSchema = z.object({
     .refine((value) => !Number.isNaN(new Date(value).getTime()), "Date invalide"),
   assigneeIds: z.array(z.uuid()).min(1, "Choisissez au moins une personne"),
 });
+
+// climateAlertEnabled arrives as a hidden "true"/"false" field, not a bare
+// checkbox — an unchecked native checkbox omits itself from FormData
+// entirely, which would be indistinguishable from "not provided" (see
+// HouseholdSettingsSection.tsx). The numeric fields stay strings here,
+// same as choreFieldsSchema's frequencyValue — converted to real numbers
+// in settings-api.server.ts's updateSettings().
+export const updateSettingsSchema = z.object({
+  intent: z.literal("updateSettings"),
+  climateAlertEnabled: z.enum(["true", "false"]).transform((value) => value === "true"),
+  climateAlertMarginC: z
+    .string()
+    .trim()
+    .regex(/^\d+(\.\d+)?$/, "Doit être un nombre")
+    .refine((value) => Number(value) > 0, "Doit être supérieur à 0"),
+  climateAlertIndoorThresholdC: z
+    .string()
+    .trim()
+    .regex(/^\d+(\.\d+)?$/, "Doit être un nombre")
+    .refine((value) => Number(value) > 0, "Doit être supérieur à 0"),
+  climateAlertCooldownMinutes: z
+    .string()
+    .trim()
+    .regex(/^\d+$/, "Doit être un nombre entier")
+    .refine((value) => Number(value) > 0, "Doit être supérieur à 0"),
+  climateSummaryRetentionDays: z
+    .string()
+    .trim()
+    .regex(/^\d+$/, "Doit être un nombre entier")
+    .refine((value) => Number(value) > 0, "Doit être supérieur à 0"),
+});
+
+export const toggleMemberNotificationSchema = z.object({
+  intent: z.literal("toggleMemberNotification"),
+  userId: z.uuid(),
+  receiveClimateAlerts: z.enum(["true", "false"]).transform((value) => value === "true"),
+});

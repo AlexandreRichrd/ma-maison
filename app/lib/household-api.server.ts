@@ -3,13 +3,16 @@ import { getAccessToken } from "./auth.server";
 
 /**
  * Narrower than the API's PublicUser (which also carries email,
- * householdId, emailVerifiedAt, timestamps) — this app's UI only ever
- * needs these four fields, same shape the old Drizzle query returned.
+ * householdId, emailVerifiedAt, timestamps) — this app's UI only needs
+ * these five fields, four of them the same shape the old Drizzle query
+ * returned. receiveClimateAlerts backs the per-member notification
+ * checkboxes on the Household settings card (issue #11).
  */
 export type HouseholdMember = {
   id: string;
   name: string;
   avatarKey: string;
+  receiveClimateAlerts: boolean;
 };
 
 type PublicUserDto = HouseholdMember & {
@@ -36,7 +39,12 @@ export async function getOrderedUsers(request: Request): Promise<HouseholdMember
   return memberOrder
     .map((id) => byId.get(id))
     .filter((user): user is PublicUserDto => user != null)
-    .map(({ id, name, avatarKey }) => ({ id, name, avatarKey }));
+    .map(({ id, name, avatarKey, receiveClimateAlerts }) => ({
+      id,
+      name,
+      avatarKey,
+      receiveClimateAlerts,
+    }));
 }
 
 export async function createInvite(request: Request, email: string): Promise<void> {
@@ -45,5 +53,18 @@ export async function createInvite(request: Request, email: string): Promise<voi
     method: "POST",
     accessToken,
     body: { email },
+  });
+}
+
+export async function updateMemberNotificationPreference(
+  request: Request,
+  userId: string,
+  receiveClimateAlerts: boolean,
+): Promise<void> {
+  const accessToken = await getAccessToken(request);
+  await apiFetch(`/households/me/members/${userId}/notification-preferences`, {
+    method: "PATCH",
+    accessToken,
+    body: { receiveClimateAlerts },
   });
 }
