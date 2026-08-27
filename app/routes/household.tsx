@@ -17,11 +17,7 @@ import {
   updateChore,
   updateChoreSubtask,
 } from "~/lib/chores-api.server";
-import {
-  createInvite,
-  getOrderedUsers,
-  updateMemberNotificationPreference,
-} from "~/lib/household-api.server";
+import { createInvite, getOrderedUsers } from "~/lib/household-api.server";
 import { getSettings, updateSettings } from "~/lib/settings-api.server";
 import { AVATAR_COLORS } from "~/lib/user-colors";
 import {
@@ -33,7 +29,6 @@ import {
   editChoreSubtaskSchema,
   inviteSchema,
   reorderChoreSubtasksSchema,
-  toggleMemberNotificationSchema,
   updateSettingsSchema,
 } from "~/lib/validation";
 
@@ -143,19 +138,6 @@ export async function action({ request }: Route.ActionArgs) {
       return { ok: true };
     }
 
-    if (intent === "toggleMemberNotification") {
-      const result = toggleMemberNotificationSchema.safeParse(Object.fromEntries(formData));
-      if (!result.success) {
-        return data({ errors: result.error.flatten().fieldErrors }, { status: 400 });
-      }
-      await updateMemberNotificationPreference(
-        request,
-        result.data.userId,
-        result.data.receiveClimateAlerts,
-      );
-      return { ok: true };
-    }
-
     const result = inviteSchema.safeParse(Object.fromEntries(formData));
     if (!result.success) {
       return data({ errors: result.error.flatten().fieldErrors }, { status: 400 });
@@ -221,7 +203,7 @@ export default function Household({ loaderData }: Route.ComponentProps) {
       </Modal>
 
       <ChoresSection chores={loaderData.chores} users={loaderData.users} />
-      <HouseholdSettingsSection settings={loaderData.settings} users={loaderData.users} />
+      <HouseholdSettingsSection settings={loaderData.settings} />
     </div>
   );
 }

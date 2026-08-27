@@ -2,7 +2,6 @@ import { useState } from "react";
 import { useFetcher } from "react-router";
 
 import { Button, Card, Input, Modal } from "~/components/ui";
-import type { HouseholdMember } from "~/lib/household-api.server";
 import type { Settings } from "~/lib/settings-api.server";
 
 /** Reused for both display (rendered) and the modal's inputs (name/defaultValue). */
@@ -84,39 +83,7 @@ function SettingsFormFields({
   );
 }
 
-function MemberNotificationRow({ user }: { user: HouseholdMember }) {
-  const fetcher = useFetcher();
-  const checked =
-    fetcher.state !== "idle" ? !user.receiveClimateAlerts : user.receiveClimateAlerts;
-
-  function toggle() {
-    const formData = new FormData();
-    formData.set("intent", "toggleMemberNotification");
-    formData.set("userId", user.id);
-    formData.set("receiveClimateAlerts", checked ? "false" : "true");
-    void fetcher.submit(formData, { method: "post" });
-  }
-
-  return (
-    <label className="flex min-h-11 cursor-pointer items-center gap-3 px-3 py-2">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={toggle}
-        className="size-5 shrink-0 accent-accent"
-      />
-      <span className="text-sm font-medium">{user.name}</span>
-    </label>
-  );
-}
-
-export function HouseholdSettingsSection({
-  settings,
-  users,
-}: {
-  settings: Settings;
-  users: HouseholdMember[];
-}) {
+export function HouseholdSettingsSection({ settings }: { settings: Settings }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [enabled, setEnabled] = useState(settings.climateAlertEnabled);
   const fetcher = useFetcher();
@@ -149,15 +116,9 @@ export function HouseholdSettingsSection({
         <br />
         Conservation des mesures : {settings.climateSummaryRetentionDays} jours
       </div>
-
-      <div className="mt-3.5">
-        <h3 className="mb-1.5 text-sm font-semibold">Recevoir les alertes climat</h3>
-        <div className="flex flex-col rounded-lg bg-surface">
-          {users.map((user) => (
-            <MemberNotificationRow key={user.id} user={user} />
-          ))}
-        </div>
-      </div>
+      {/* Whether *this* household member receives the climate alert email
+          is a personal preference, not a shared value — edited from
+          /account (click your own name in the sidebar), not here. */}
 
       <Modal
         open={modalOpen}

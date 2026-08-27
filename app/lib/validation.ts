@@ -239,8 +239,10 @@ export const updateSettingsSchema = z.object({
     .refine((value) => Number(value) > 0, "Doit être supérieur à 0"),
 });
 
-export const toggleMemberNotificationSchema = z.object({
-  intent: z.literal("toggleMemberNotification"),
-  userId: z.uuid(),
+// No userId field — this backs the personal /account page, where the
+// action always updates the signed-in user's own row (requireUser's id),
+// never a client-submitted target. See account.tsx.
+export const updateNotificationPreferenceSchema = z.object({
+  intent: z.literal("updateNotificationPreference"),
   receiveClimateAlerts: z.enum(["true", "false"]).transform((value) => value === "true"),
 });
