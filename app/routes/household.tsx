@@ -2,6 +2,7 @@ import { useState } from "react";
 import { data, useFetcher } from "react-router";
 
 import { ChoresSection } from "~/components/household/ChoresSection";
+import { HouseholdSettingsSection } from "~/components/household/HouseholdSettingsSection";
 import { PageHeader } from "~/components/layout/PageHeader";
 import { Button, Card, Input, Modal } from "~/components/ui";
 import { ApiRequestError, mapApiErrors } from "~/lib/api.server";
@@ -16,7 +17,12 @@ import {
   updateChore,
   updateChoreSubtask,
 } from "~/lib/chores-api.server";
-import { createInvite, getOrderedUsers } from "~/lib/household-api.server";
+import {
+  createInvite,
+  getOrderedUsers,
+  updateMemberNotificationPreference,
+} from "~/lib/household-api.server";
+import { getSettings, updateSettings } from "~/lib/settings-api.server";
 import { AVATAR_COLORS } from "~/lib/user-colors";
 import {
   addChoreSchema,
@@ -27,6 +33,8 @@ import {
   editChoreSubtaskSchema,
   inviteSchema,
   reorderChoreSubtasksSchema,
+  toggleMemberNotificationSchema,
+  updateSettingsSchema,
 } from "~/lib/validation";
 
 import type { Route } from "./+types/household";
@@ -37,11 +45,12 @@ export function meta() {
 
 export async function loader({ request }: Route.LoaderArgs) {
   await requireUser(request);
-  const [users, chores] = await Promise.all([
+  const [users, chores, settings] = await Promise.all([
     getOrderedUsers(request),
     getChoreConfigs(request),
+    getSettings(request),
   ]);
-  return { users, chores };
+  return { users, chores, settings };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -125,6 +134,28 @@ export async function action({ request }: Route.ActionArgs) {
       return { ok: true };
     }
 
+    if (intent === "updateSettings") {
+      const result = updateSettingsSchema.safeParse(Object.fromEntries(formData));
+      if (!result.success) {
+        return data({ errors: result.error.flatten().fieldErrors }, { status: 400 });
+      }
+      await updateSettings(request, result.data);
+      return { ok: true };
+    }
+
+    if (intent === "toggleMemberNotification") {
+      const result = toggleMemberNotificationSchema.safeParse(Object.fromEntries(formData));
+      if (!result.success) {
+        return data({ errors: result.error.flatten().fieldErrors }, { status: 400 });
+      }
+      await updateMemberNotificationPreference(
+        request,
+        result.data.userId,
+        result.data.receiveClimateAlerts,
+      );
+      return { ok: true };
+    }
+
     const result = inviteSchema.safeParse(Object.fromEntries(formData));
     if (!result.success) {
       return data({ errors: result.error.flatten().fieldErrors }, { status: 400 });
@@ -190,6 +221,7 @@ export default function Household({ loaderData }: Route.ComponentProps) {
       </Modal>
 
       <ChoresSection chores={loaderData.chores} users={loaderData.users} />
+      <HouseholdSettingsSection settings={loaderData.settings} users={loaderData.users} />
     </div>
   );
 }
