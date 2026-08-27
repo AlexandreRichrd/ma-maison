@@ -220,21 +220,42 @@ Below Corvées, a **Paramètres** card
 settings area referenced in the same "Household already functions as the
 household-configuration page" reasoning above — a card, not a tab or a new
 route, since the settings list is short enough that one card doesn't feel
-cluttered (revisit if that changes). It covers the climate cool-down/
-close-up alert (enabled switch, outdoor/indoor margin, indoor comfort
-threshold, cooldown) and raw-measure retention — backed by
-`my-home-backend`'s `GET/PATCH /settings` (`lib/settings-api.server.ts`),
-see that repo's `CLAUDE.md` Climate alerts section. Same `<Modal>`-based
-edit pattern as Corvées: one shared modal, a hidden field mirrors the
-enabled checkbox as an explicit `"true"`/`"false"` string (an unchecked
-native checkbox omits itself from `FormData` entirely, which a
-partial-update `PATCH` can't tell apart from "field not touched"). Below
-that, a checkbox per household member controls
-`receiveClimateAlerts` — the one per-user setting in issue #11 — each its
-own `useFetcher` with the same optimistic-flip-while-pending pattern as
-`ShoppingItemRow.tsx`, submitting a hand-built `FormData` rather than a
-real `<form>` (same technique `ChoresSection.tsx`'s subtask reorder
-buttons already use), since the row isn't itself inside a form element.
+cluttered (revisit if that changes). It covers only the genuinely
+**shared** values: the climate cool-down/close-up alert (enabled switch,
+outdoor/indoor margin, indoor comfort threshold, cooldown) and raw-measure
+retention — backed by `my-home-backend`'s `GET/PATCH /settings`
+(`lib/settings-api.server.ts`), see that repo's `CLAUDE.md` Climate alerts
+section. Same `<Modal>`-based edit pattern as Corvées: one shared modal, a
+hidden field mirrors the enabled checkbox as an explicit `"true"`/`"false"`
+string (an unchecked native checkbox omits itself from `FormData`
+entirely, which a partial-update `PATCH` can't tell apart from "field not
+touched"). It does **not** carry a per-member notification list — that's
+personal, not shared, and lives on `/account` (see Account below).
+
+## Account
+
+`/account` — reached by clicking your own name/avatar in the sidebar
+(`components/layout/HouseholdFooter.tsx`), not a sidebar nav item and not
+one of the six sections (same "click-through, not nav-level" pattern as
+`/climate/:deviceName`, see Dashboard above). Only your own row in
+`HouseholdFooter` links there — `currentUserId`, threaded down from
+`_layout.tsx`'s loader through `Sidebar`/`MobileNavDrawer`, is what tells
+it which row that is; another household member's row renders the same
+avatar+name but isn't a link, since this page edits nobody's preferences
+but your own.
+
+Today it holds one control: a `receiveClimateAlerts` checkbox (issue
+#11's one per-user setting — whether *you* get the climate cool-down/
+close-up alert email), instant-toggle via `useFetcher` with the same
+optimistic-flip-while-pending pattern as `ShoppingItemRow.tsx`. The
+route's `action` always updates the signed-in user's own row
+(`requireUser(request).id`), never a client-submitted target id — unlike
+the household-wide settings card, this page has no "edit someone else"
+path even in principle, so there's nothing to validate a target id
+against. Reuses `getOrderedUsers()` to read the current user's own row
+(no bespoke single-user endpoint) and `household-api.server.ts`'s
+`updateMemberNotificationPreference()` to write it, the same client
+function the settings module already had.
 
 ## Chore rotation
 
@@ -284,6 +305,7 @@ app/
     cleaning.tsx           # ?week=2026-W32
     reminders.tsx
     household.tsx
+    account.tsx             # /account — your own preferences, reached via HouseholdFooter
     climate.$deviceName.tsx # per-sensor history, linked from the Dashboard widget
     register.tsx           # public, requires ?token= from an invite
     activate.tsx           # public, consumes the emailed activation link
