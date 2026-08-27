@@ -54,9 +54,15 @@ export function applyMeasurements(
 export function HomeClimateWidget({
   indoor: loaderIndoor,
   outdoor: loaderOutdoor,
+  indoorLabel = "Intérieur",
+  outdoorLabel = "Extérieur",
 }: {
   indoor: IndoorClimate;
   outdoor: OutdoorClimate;
+  // Household-chosen sensor display names (issue #12) — defaults match
+  // what this widget always rendered before that setting existed.
+  indoorLabel?: string;
+  outdoorLabel?: string;
 }) {
   const [climate, setClimate] = useState<HomeClimate>({
     indoor: loaderIndoor,
@@ -121,7 +127,7 @@ export function HomeClimateWidget({
           <div className="size-10 shrink-0 rounded-full bg-climate-outside-icon" />
           <div>
             <div className="mb-0.5 text-xs font-semibold tracking-wide text-climate-outside-text uppercase">
-              Extérieur
+              {outdoorLabel}
             </div>
             {hasOutdoorReading ? (
               <>
@@ -151,7 +157,7 @@ export function HomeClimateWidget({
           <div className="size-10 shrink-0 rounded-full bg-climate-inside-icon" />
           <div>
             <div className="mb-0.5 text-xs font-semibold tracking-wide text-climate-inside-text uppercase">
-              Intérieur
+              {indoorLabel}
             </div>
             {hasIndoorReading ? (
               <>

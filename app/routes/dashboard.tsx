@@ -6,6 +6,7 @@ import { requireUser } from "~/lib/auth.server";
 import { withCurrentUserFirst } from "~/lib/cleaning-order";
 import { getDashboardData } from "~/lib/dashboard.server";
 import { getOrderedUsers } from "~/lib/household-api.server";
+import { getSettings, resolveSensorLabel } from "~/lib/settings-api.server";
 
 import type { Route } from "./+types/dashboard";
 
@@ -21,11 +22,18 @@ function getGreeting(): string {
 
 export async function loader({ request }: Route.LoaderArgs) {
   const currentUser = await requireUser(request);
-  const [dashboard, users] = await Promise.all([
+  const [dashboard, users, settings] = await Promise.all([
     getDashboardData(request),
     getOrderedUsers(request),
+    getSettings(request),
   ]);
-  return { ...dashboard, users, currentUserId: currentUser.id };
+  return {
+    ...dashboard,
+    users,
+    currentUserId: currentUser.id,
+    indoorLabel: resolveSensorLabel("capteur-salon", settings),
+    outdoorLabel: resolveSensorLabel("capteur-exterieur", settings),
+  };
 }
 
 export default function Dashboard({ loaderData }: Route.ComponentProps) {
@@ -38,6 +46,8 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
     outdoorClimate,
     users,
     currentUserId,
+    indoorLabel,
+    outdoorLabel,
   } = loaderData;
   const currentUser = users.find((user) => user.id === currentUserId);
   const orderedDayChores = withCurrentUserFirst(dayChores, currentUserId);
@@ -56,7 +66,12 @@ export default function Dashboard({ loaderData }: Route.ComponentProps) {
       </p>
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-        <HomeClimateWidget indoor={indoorClimate} outdoor={outdoorClimate} />
+        <HomeClimateWidget
+          indoor={indoorClimate}
+          outdoor={outdoorClimate}
+          indoorLabel={indoorLabel}
+          outdoorLabel={outdoorLabel}
+        />
         <ReminderWidget reminders={myDueReminders} users={users} />
         <ShoppingWidget lists={shoppingLists} />
         <CleaningWidget

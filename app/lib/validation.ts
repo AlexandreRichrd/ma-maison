@@ -211,9 +211,12 @@ export const addReminderSchema = z.object({
 // climateAlertEnabled arrives as a hidden "true"/"false" field, not a bare
 // checkbox — an unchecked native checkbox omits itself from FormData
 // entirely, which would be indistinguishable from "not provided" (see
-// HouseholdSettingsSection.tsx). The numeric fields stay strings here,
-// same as choreFieldsSchema's frequencyValue — converted to real numbers
-// in settings-api.server.ts's updateSettings().
+// components/settings/HouseholdSettingsCard.tsx). The numeric fields stay
+// strings here, same as choreFieldsSchema's frequencyValue — converted to
+// real numbers in settings-api.server.ts's updateSettings(). The label
+// fields allow an empty string on purpose — that's how a household clears
+// an override back to the default (see SettingsService.update() on the API
+// side).
 export const updateSettingsSchema = z.object({
   intent: z.literal("updateSettings"),
   climateAlertEnabled: z.enum(["true", "false"]).transform((value) => value === "true"),
@@ -237,10 +240,19 @@ export const updateSettingsSchema = z.object({
     .trim()
     .regex(/^\d+$/, "Doit être un nombre entier")
     .refine((value) => Number(value) > 0, "Doit être supérieur à 0"),
+  indoorSensorLabel: z.string().trim().max(50, "50 caractères maximum"),
+  outdoorSensorLabel: z.string().trim().max(50, "50 caractères maximum"),
 });
 
-export const toggleMemberNotificationSchema = z.object({
-  intent: z.literal("toggleMemberNotification"),
-  userId: z.uuid(),
+export const updateMemberOrderSchema = z.object({
+  intent: z.literal("updateMemberOrder"),
+  memberOrder: z.array(z.uuid()).min(1),
+});
+
+// No userId field — the action always updates the signed-in user's own
+// row (requireUser(request).id), never a client-submitted target. See
+// routes/settings.tsx.
+export const updateNotificationPreferenceSchema = z.object({
+  intent: z.literal("updateNotificationPreference"),
   receiveClimateAlerts: z.enum(["true", "false"]).transform((value) => value === "true"),
 });

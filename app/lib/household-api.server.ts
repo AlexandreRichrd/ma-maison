@@ -5,8 +5,8 @@ import { getAccessToken } from "./auth.server";
  * Narrower than the API's PublicUser (which also carries email,
  * householdId, emailVerifiedAt, timestamps) — this app's UI only needs
  * these five fields, four of them the same shape the old Drizzle query
- * returned. receiveClimateAlerts backs the per-member notification
- * checkboxes on the Household settings card (issue #11).
+ * returned. receiveClimateAlerts backs the personal-preferences checkbox
+ * on /settings (issue #12; originally issue #11's Household card).
  */
 export type HouseholdMember = {
   id: string;
@@ -66,5 +66,20 @@ export async function updateMemberNotificationPreference(
     method: "PATCH",
     accessToken,
     body: { receiveClimateAlerts },
+  });
+}
+
+// Must be exactly a permutation of the household's current members — the
+// API rejects anything partial or malformed (invalid_member_order), see
+// my-home-backend/CLAUDE.md's Households section.
+export async function updateMemberOrder(
+  request: Request,
+  memberOrder: string[],
+): Promise<void> {
+  const accessToken = await getAccessToken(request);
+  await apiFetch("/households/me/member-order", {
+    method: "PATCH",
+    accessToken,
+    body: { memberOrder },
   });
 }

@@ -6,15 +6,15 @@ import { cardClassName } from "~/components/ui";
 import { groupByType } from "~/lib/climate-history";
 import { getClimateSummaries } from "~/lib/climate-summary-api.server";
 import { getCurrentIsoDate, shiftIsoDate } from "~/lib/day";
+import { getSettings, resolveSensorLabel } from "~/lib/settings-api.server";
 
 import type { Route } from "./+types/climate.$deviceName";
 
 // Matches HomeClimateWidget's INDOOR_DEVICE/OUTDOOR_DEVICE — also the set
-// of valid :deviceName values for this route (anything else 404s).
-const DEVICE_LABELS: Record<string, string> = {
-  "capteur-salon": "Intérieur",
-  "capteur-exterieur": "Extérieur",
-};
+// of valid :deviceName values for this route (anything else 404s). The
+// display label itself comes from resolveSensorLabel() (issue #12), not a
+// hardcoded map — this is only the validity check.
+const VALID_DEVICE_NAMES = new Set(["capteur-salon", "capteur-exterieur"]);
 
 const METRIC_LABELS: Record<string, { label: string; unit: string }> = {
   temperature: { label: "Température", unit: "°C" },
@@ -29,24 +29,26 @@ const METRIC_LABELS: Record<string, { label: string; unit: string }> = {
 // keeping the chart simple.
 const HISTORY_DAYS = 30;
 
-export function meta({ params }: Route.MetaArgs) {
-  const label = DEVICE_LABELS[params.deviceName] ?? params.deviceName;
+export function meta({ params, loaderData }: Route.MetaArgs) {
+  const label = loaderData?.label ?? params.deviceName;
   return [{ title: `${label} · Climat · Hearth` }];
 }
 
 export async function loader({ request, params }: Route.LoaderArgs) {
-  const label = DEVICE_LABELS[params.deviceName];
-  if (!label) {
+  if (!VALID_DEVICE_NAMES.has(params.deviceName)) {
     throw data("Introuvable", { status: 404 });
   }
 
   const to = getCurrentIsoDate();
   const from = shiftIsoDate(to, -(HISTORY_DAYS - 1));
-  const readings = await getClimateSummaries(request, params.deviceName, from, to);
+  const [readings, settings] = await Promise.all([
+    getClimateSummaries(request, params.deviceName, from, to),
+    getSettings(request),
+  ]);
 
   return {
     deviceName: params.deviceName,
-    label,
+    label: resolveSensorLabel(params.deviceName, settings),
     series: groupByType(readings),
   };
 }
