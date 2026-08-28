@@ -28,10 +28,15 @@ export default function AppLayout({ loaderData }: Route.ComponentProps) {
         avatarColorClassName={avatarColorFor(users, currentUserId)}
         onOpenNav={() => setNavOpen(true)}
       />
-      <MobileNavDrawer open={navOpen} onClose={() => setNavOpen(false)} users={users} />
+      <MobileNavDrawer
+        open={navOpen}
+        onClose={() => setNavOpen(false)}
+        users={users}
+        currentUserId={currentUserId}
+      />
 
       <div className="flex min-h-0 flex-1">
-        <Sidebar users={users} />
+        <Sidebar users={users} currentUserId={currentUserId} />
         <main className="min-w-0 flex-1 px-4 py-5 nav:ml-[232px] nav:max-w-[1120px] nav:px-11 nav:py-9">
           <Outlet />
         </main>

@@ -53,7 +53,12 @@ or inside loaders/actions, same rule as before.
 
 ## Sections
 
-Persistent sidebar navigation. Six sections.
+Persistent sidebar navigation. Six sections. `/settings` (Paramètres,
+issue #12) is deliberately **not** one of them, despite spanning enough
+unrelated concerns (climate config, sensor labels, member ordering,
+personal notification prefs) that a first pass gave it a nav entry —
+reached only by clicking your own name/avatar in the sidebar instead, see
+Paramètres below.
 
 ### Dashboard
 Read-only overview, one loader aggregating four sources:
@@ -89,12 +94,13 @@ Read-only overview, one loader aggregating four sources:
 
 Every widget links into its owning section. No mutations happen here.
 
-Both climate blocks (Intérieur/Extérieur) are also links to
+Both climate blocks (labeled Intérieur/Extérieur by default — see
+Paramètres for the household-chosen override, issue #12) are also links to
 `/climate/:deviceName` — a per-sensor history view (min/max/avg per day,
 last 30 days, one simple hand-rolled SVG chart per metric — see
 `lib/climate-history.ts` and `components/climate/DailyHistoryChart.tsx`)
 backed by `my-home-backend`'s `GET /climate/summaries` (see its
-`CLAUDE.md`'s Daily summaries and retention section). **Not a seventh
+`CLAUDE.md`'s Daily summaries and retention section). **Not its own
 sidebar section** — same pattern as `shopping/:listId` and
 `recipes/:recipeId`: reachable by clicking through from where it's
 relevant, not nav-level. Deliberately no charting library and no
@@ -196,45 +202,86 @@ created), passed for week/month so only the visible days' worth is fetched
 (no delete-on-complete means the unfiltered list only grows).
 
 ### Household
-User list (name and avatar), plus `+ Inviter un membre`: any signed-in user can send
-an invite email to a new address (see Authentication). The **Edit** button
-stays a **static placeholder** — present in the UI, intentionally not wired.
-Do not implement it without being asked; editing/removing a user is still out
-of scope (see Not in scope yet).
+User list (name and avatar only — no per-user actions here since issue
+#12 removed the long-inert "Edit" placeholder rather than implementing it;
+nothing in scope anywhere defines what editing a user would even change),
+plus `+ Inviter un membre`: any signed-in user can send an invite email to
+a new address (see Authentication).
 
 Below that, a **Corvées** card (`components/household/ChoresSection.tsx`) is
 the admin UI for chore configuration — add, edit, and remove chores, each
 with a name, frequency (every N weeks), and either "alterne" (rotating) or
 "toujours la même personne" (pinned, with a person picker). It lands here
-rather than a new sidebar section: Household already functions as the
-household-configuration page, and this app is deliberately kept to six
-sections (see Sections above). One shared `<Modal>` handles both add and
-edit (same pattern as the invite modal); a second `<Modal>` is a delete
-confirmation, since removing a chore also deletes its completion history and
-nothing else in the app currently needs a destructive-action confirmation.
-The anchor-week field is a native `<input type="week">` — its value format
+rather than its own section: Household already functions as the
+membership/invite page, and a chore admin is a natural extension of that,
+not a distinct enough concern to justify a section on its own (see
+Sections above). One shared `<Modal>` handles both add and edit (same
+pattern as the invite modal); a second `<Modal>` is a delete confirmation,
+since removing a chore also deletes its completion history and nothing
+else in the app currently needs a destructive-action confirmation. The
+anchor-week field is a native `<input type="week">` — its value format
 (`YYYY-Www`) already matches `isValidIsoWeek()`, no custom picker needed.
 
-Below Corvées, a **Paramètres** card
-(`components/household/HouseholdSettingsSection.tsx`, issue #11) is the
-settings area referenced in the same "Household already functions as the
-household-configuration page" reasoning above — a card, not a tab or a new
-route, since the settings list is short enough that one card doesn't feel
-cluttered (revisit if that changes). It covers the climate cool-down/
-close-up alert (enabled switch, outdoor/indoor margin, indoor comfort
-threshold, cooldown) and raw-measure retention — backed by
-`my-home-backend`'s `GET/PATCH /settings` (`lib/settings-api.server.ts`),
-see that repo's `CLAUDE.md` Climate alerts section. Same `<Modal>`-based
-edit pattern as Corvées: one shared modal, a hidden field mirrors the
-enabled checkbox as an explicit `"true"`/`"false"` string (an unchecked
-native checkbox omits itself from `FormData` entirely, which a
-partial-update `PATCH` can't tell apart from "field not touched"). Below
-that, a checkbox per household member controls
-`receiveClimateAlerts` — the one per-user setting in issue #11 — each its
-own `useFetcher` with the same optimistic-flip-while-pending pattern as
-`ShoppingItemRow.tsx`, submitting a hand-built `FormData` rather than a
-real `<form>` (same technique `ChoresSection.tsx`'s subtask reorder
-buttons already use), since the row isn't itself inside a form element.
+Household-wide settings (climate thresholds, sensor labels, member order)
+used to live here too, as a card (issue #11) — issue #12 moved them to
+`/settings` instead, once that list grew past "one card next to the
+chores admin" (see Paramètres below for where it lives now).
+
+### Paramètres
+
+Issue #12's settings page, `routes/settings.tsx` — reached **only** by
+clicking your own name/avatar in the sidebar (`HouseholdFooter.tsx`), not
+a sidebar nav item. A first pass gave it a nav entry, on the reasoning
+that the settings list had grown to span climate config, sensor display
+names, household membership ordering, and a per-user notification
+preference — concerns with no natural shared home with the chores admin
+or with each other, unlike issue #11's original climate-only card. That
+turned out to be the wrong call for this app's nav, so the entry was
+removed again — `/settings` is a click-through page like
+`/climate/:deviceName`, not a section, and carries the same `back:
+{ to: "/", label: "← Tableau de bord" }` `<PageHeader>` prop that page
+uses, since there's no persistent nav link back to it otherwise. Two
+clearly separated cards (`components/settings/`):
+
+- **`HouseholdSettingsCard.tsx`** — shared, one value for the whole
+  household. Climate cool-down/close-up alert (enabled switch, outdoor/
+  indoor margin, indoor comfort threshold, cooldown), raw-measure
+  retention, and sensor display names — backed by `my-home-backend`'s
+  `GET/PATCH /settings` (`lib/settings-api.server.ts`), see that repo's
+  `CLAUDE.md` Climate alerts section. One shared `<Modal>` edits all of
+  it together: a hidden field mirrors the enabled checkbox as an explicit
+  `"true"`/`"false"` string (an unchecked native checkbox omits itself
+  from `FormData` entirely, which a partial-update `PATCH` can't tell
+  apart from "field not touched"); the two label fields accept an empty
+  string on purpose, shown via `placeholder` as the current default —
+  that's how an override is cleared back to it
+  (`resolveSensorLabel()`, also used by the Dashboard widget and
+  `/climate/:deviceName` so a chosen label actually shows up everywhere a
+  sensor name renders, not just on this page). Below the modal, a
+  member-order editor: one row per member with ↑/↓ swap buttons (same
+  pattern as `ChoresSection.tsx`'s subtask reorder — this app is scoped
+  to exactly two people, so nothing fancier is justified), submitting the
+  full reordered array via a hand-built `FormData` + `fetcher.submit`.
+  The API rejects anything that isn't exactly a permutation of the
+  current members (see `my-home-backend/CLAUDE.md`'s Households
+  section).
+- **`PersonalPreferencesCard.tsx`** (`id="personal-preferences"`) —
+  per-user. Today just `receiveClimateAlerts` (issue #11's one per-user
+  setting, moved here from a short-lived `/account` page). The route's
+  `action` always updates the signed-in user's own row
+  (`requireUser(request).id`), never a client-submitted target — unlike
+  the household card, this one has no "edit someone else" path even in
+  principle. Instant-toggle checkbox via `useFetcher`, same
+  optimistic-flip-while-pending pattern as `ShoppingItemRow.tsx`.
+
+`HouseholdFooter.tsx` links your own name/avatar row to
+`/settings#personal-preferences`, scrolled straight to the personal card
+— `currentUserId`, threaded down from `_layout.tsx`'s loader through
+`Sidebar`/`MobileNavDrawer`, is what makes only *your* row a link; another
+member's row renders the same avatar+name but isn't one, since nobody
+edits another member's preferences from here. This is the page's **only**
+entry point (see Sections above) — get there via your own profile row,
+never a nav item.
 
 ## Chore rotation
 
@@ -284,6 +331,7 @@ app/
     cleaning.tsx           # ?week=2026-W32
     reminders.tsx
     household.tsx
+    settings.tsx            # /settings — household + personal preferences, see Paramètres
     climate.$deviceName.tsx # per-sensor history, linked from the Dashboard widget
     register.tsx           # public, requires ?token= from an invite
     activate.tsx           # public, consumes the emailed activation link
@@ -297,7 +345,8 @@ app/
     recipes/              # RecipeForm.tsx — create/edit form, ingredient+step lists
     cleaning/
     reminders/
-    household/            # ChoresSection.tsx — chore admin CRUD; HouseholdSettingsSection.tsx — settings card
+    household/            # ChoresSection.tsx — chore admin CRUD
+    settings/              # HouseholdSettingsCard.tsx, PersonalPreferencesCard.tsx — see Paramètres
     climate/               # DailyHistoryChart.tsx — per-sensor history chart
   lib/
     api.server.ts         # fetch wrapper: base URL, JWT header, error mapping,
@@ -309,7 +358,7 @@ app/
     week.ts                # ISO week parsing and navigation (display only)
     validation.ts          # form-side validation that mirrors API error codes
     chores-api.server.ts   # chore config CRUD client
-    settings-api.server.ts # household_settings GET/PATCH client
+    settings-api.server.ts # household_settings GET/PATCH client, resolveSensorLabel()
     units.ts                # closed Unit list + French labels (recipes, shopping)
 ```
 
@@ -583,7 +632,8 @@ backend's concern now.
 
 Do not build these unless explicitly asked:
 
-- Household **edit** (button is a deliberate placeholder — invite is now wired, see Household)
+- Household member **edit** (the old placeholder button was removed rather
+  than implemented, issue #12 — see Household)
 - Remove-user flow, or any way to revoke/expire an invite from the UI
 - Redesigning chore rotation, Cleaning/Dashboard's two-column layout, or
   reminder assignees for more than two people — invites can technically

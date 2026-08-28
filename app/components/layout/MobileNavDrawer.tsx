@@ -9,10 +9,12 @@ export function MobileNavDrawer({
   open,
   onClose,
   users,
+  currentUserId,
 }: {
   open: boolean;
   onClose: () => void;
   users: HouseholdMember[];
+  currentUserId: string;
 }) {
   const panelRef = useRef<HTMLElement>(null);
   const lastFocusedRef = useRef<HTMLElement | null>(null);
@@ -52,7 +54,7 @@ export function MobileNavDrawer({
       >
         <div className="px-2 font-serif text-xl font-bold">Hearth</div>
         <NavList variant="drawer" onNavigate={onClose} />
-        <HouseholdFooter users={users} />
+        <HouseholdFooter users={users} currentUserId={currentUserId} onNavigate={onClose} />
       </aside>
     </>
   );

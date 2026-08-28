@@ -3,6 +3,7 @@ import { useFetcher } from "react-router";
 
 import { Button, Card, Input, Modal } from "~/components/ui";
 import type { HouseholdMember } from "~/lib/household-api.server";
+import { resolveSensorLabel } from "~/lib/sensor-labels";
 import type { Settings } from "~/lib/settings-api.server";
 
 /** Reused for both display (rendered) and the modal's inputs (name/defaultValue). */
@@ -80,37 +81,77 @@ function SettingsFormFields({
         required
       />
       {errorFor("climateSummaryRetentionDays")}
+      {/* Empty field = use the default shown as placeholder — submitting
+          it blank clears any override back to that default. */}
+      <Input
+        label="Nom du capteur intérieur"
+        name="indoorSensorLabel"
+        placeholder={resolveSensorLabel("capteur-salon", settings)}
+        defaultValue={settings.indoorSensorLabel ?? ""}
+        maxLength={50}
+      />
+      {errorFor("indoorSensorLabel")}
+      <Input
+        label="Nom du capteur extérieur"
+        name="outdoorSensorLabel"
+        placeholder={resolveSensorLabel("capteur-exterieur", settings)}
+        defaultValue={settings.outdoorSensorLabel ?? ""}
+        maxLength={50}
+      />
+      {errorFor("outdoorSensorLabel")}
     </>
   );
 }
 
-function MemberNotificationRow({ user }: { user: HouseholdMember }) {
+function MemberOrderEditor({ users }: { users: HouseholdMember[] }) {
   const fetcher = useFetcher();
-  const checked =
-    fetcher.state !== "idle" ? !user.receiveClimateAlerts : user.receiveClimateAlerts;
 
-  function toggle() {
+  function move(userId: string, direction: -1 | 1) {
+    const ids = users.map((user) => user.id);
+    const index = ids.indexOf(userId);
+    const reordered = [...ids];
+    const targetIndex = index + direction;
+    [reordered[index], reordered[targetIndex]] = [reordered[targetIndex], reordered[index]];
+
     const formData = new FormData();
-    formData.set("intent", "toggleMemberNotification");
-    formData.set("userId", user.id);
-    formData.set("receiveClimateAlerts", checked ? "false" : "true");
+    formData.set("intent", "updateMemberOrder");
+    for (const id of reordered) formData.append("memberOrder", id);
     void fetcher.submit(formData, { method: "post" });
   }
 
   return (
-    <label className="flex min-h-11 cursor-pointer items-center gap-3 px-3 py-2">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={toggle}
-        className="size-5 shrink-0 accent-accent"
-      />
-      <span className="text-sm font-medium">{user.name}</span>
-    </label>
+    <div className="mt-3.5">
+      <h3 className="mb-1.5 text-sm font-semibold">Ordre des membres</h3>
+      <div className="flex flex-col rounded-lg bg-surface">
+        {users.map((user, index) => (
+          <div key={user.id} className="flex items-center gap-2.5 px-3 py-2">
+            <span className="flex-1 text-sm font-medium">{user.name}</span>
+            <button
+              type="button"
+              disabled={index === 0}
+              onClick={() => move(user.id, -1)}
+              aria-label={`Monter ${user.name}`}
+              className="flex size-8 shrink-0 items-center justify-center rounded-md border border-border text-sm disabled:opacity-30"
+            >
+              ↑
+            </button>
+            <button
+              type="button"
+              disabled={index === users.length - 1}
+              onClick={() => move(user.id, 1)}
+              aria-label={`Descendre ${user.name}`}
+              className="flex size-8 shrink-0 items-center justify-center rounded-md border border-border text-sm disabled:opacity-30"
+            >
+              ↓
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
-export function HouseholdSettingsSection({
+export function HouseholdSettingsCard({
   settings,
   users,
 }: {
@@ -134,9 +175,9 @@ export function HouseholdSettingsSection({
   }
 
   return (
-    <Card className="mt-5">
+    <Card>
       <div className="mb-3.5 flex items-center justify-between">
-        <h2 className="font-serif text-lg font-semibold">Paramètres</h2>
+        <h2 className="font-serif text-lg font-semibold">Paramètres du foyer</h2>
         <Button variant="secondary" onClick={openModal}>
           Modifier
         </Button>
@@ -148,20 +189,16 @@ export function HouseholdSettingsSection({
         délai {settings.climateAlertCooldownMinutes} min
         <br />
         Conservation des mesures : {settings.climateSummaryRetentionDays} jours
+        <br />
+        Capteurs : {resolveSensorLabel("capteur-salon", settings)} /{" "}
+        {resolveSensorLabel("capteur-exterieur", settings)}
       </div>
 
-      <div className="mt-3.5">
-        <h3 className="mb-1.5 text-sm font-semibold">Recevoir les alertes climat</h3>
-        <div className="flex flex-col rounded-lg bg-surface">
-          {users.map((user) => (
-            <MemberNotificationRow key={user.id} user={user} />
-          ))}
-        </div>
-      </div>
+      <MemberOrderEditor users={users} />
 
       <Modal
         open={modalOpen}
-        title="Modifier les paramètres"
+        title="Modifier les paramètres du foyer"
         onClose={() => setModalOpen(false)}
         fetcher={fetcher}
       >
