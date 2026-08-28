@@ -6,7 +6,8 @@ import { cardClassName } from "~/components/ui";
 import { groupByType } from "~/lib/climate-history";
 import { getClimateSummaries } from "~/lib/climate-summary-api.server";
 import { getCurrentIsoDate, shiftIsoDate } from "~/lib/day";
-import { getSettings, resolveSensorLabel } from "~/lib/settings-api.server";
+import { resolveSensorLabel } from "~/lib/sensor-labels";
+import { getSettings } from "~/lib/settings-api.server";
 
 import type { Route } from "./+types/climate.$deviceName";
 

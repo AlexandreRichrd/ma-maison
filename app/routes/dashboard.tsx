@@ -6,7 +6,8 @@ import { requireUser } from "~/lib/auth.server";
 import { withCurrentUserFirst } from "~/lib/cleaning-order";
 import { getDashboardData } from "~/lib/dashboard.server";
 import { getOrderedUsers } from "~/lib/household-api.server";
-import { getSettings, resolveSensorLabel } from "~/lib/settings-api.server";
+import { resolveSensorLabel } from "~/lib/sensor-labels";
+import { getSettings } from "~/lib/settings-api.server";
 
 import type { Route } from "./+types/dashboard";
 

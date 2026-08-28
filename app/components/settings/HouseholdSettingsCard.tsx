@@ -3,7 +3,8 @@ import { useFetcher } from "react-router";
 
 import { Button, Card, Input, Modal } from "~/components/ui";
 import type { HouseholdMember } from "~/lib/household-api.server";
-import { resolveSensorLabel, type Settings } from "~/lib/settings-api.server";
+import { resolveSensorLabel } from "~/lib/sensor-labels";
+import type { Settings } from "~/lib/settings-api.server";
 
 /** Reused for both display (rendered) and the modal's inputs (name/defaultValue). */
 function SettingsFormFields({
