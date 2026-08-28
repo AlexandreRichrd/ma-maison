@@ -53,10 +53,12 @@ or inside loaders/actions, same rule as before.
 
 ## Sections
 
-Persistent sidebar navigation. Seven sections — six plus Paramètres
-(issue #12), the one deliberate exception to "don't add a section, use a
-card or a click-through page instead" (see Household and Paramètres
-below for why this one earned it).
+Persistent sidebar navigation. Six sections. `/settings` (Paramètres,
+issue #12) is deliberately **not** one of them, despite spanning enough
+unrelated concerns (climate config, sensor labels, member ordering,
+personal notification prefs) that a first pass gave it a nav entry —
+reached only by clicking your own name/avatar in the sidebar instead, see
+Paramètres below.
 
 ### Dashboard
 Read-only overview, one loader aggregating four sources:
@@ -222,20 +224,24 @@ anchor-week field is a native `<input type="week">` — its value format
 
 Household-wide settings (climate thresholds, sensor labels, member order)
 used to live here too, as a card (issue #11) — issue #12 moved them to
-their own **Paramètres** section instead, once that list grew past "one
-card next to the chores admin" (see Paramètres below for why).
+`/settings` instead, once that list grew past "one card next to the
+chores admin" (see Paramètres below for where it lives now).
 
 ### Paramètres
 
-Issue #12's settings page, `routes/settings.tsx` — the one exception to
-this app's "don't add a section, use a card or a click-through page
-instead" rule (see Sections above). Justified there, not on Household,
-because by the time it was built the settings list spanned climate
-config, sensor display names, household membership ordering, and a
-per-user notification preference — concerns with no natural shared home
-with the chores admin, or with each other, unlike issue #11's original
-climate-only card. Two clearly separated cards
-(`components/settings/`):
+Issue #12's settings page, `routes/settings.tsx` — reached **only** by
+clicking your own name/avatar in the sidebar (`HouseholdFooter.tsx`), not
+a sidebar nav item. A first pass gave it a nav entry, on the reasoning
+that the settings list had grown to span climate config, sensor display
+names, household membership ordering, and a per-user notification
+preference — concerns with no natural shared home with the chores admin
+or with each other, unlike issue #11's original climate-only card. That
+turned out to be the wrong call for this app's nav, so the entry was
+removed again — `/settings` is a click-through page like
+`/climate/:deviceName`, not a section, and carries the same `back:
+{ to: "/", label: "← Tableau de bord" }` `<PageHeader>` prop that page
+uses, since there's no persistent nav link back to it otherwise. Two
+clearly separated cards (`components/settings/`):
 
 - **`HouseholdSettingsCard.tsx`** — shared, one value for the whole
   household. Climate cool-down/close-up alert (enabled switch, outdoor/
@@ -268,13 +274,14 @@ climate-only card. Two clearly separated cards
   principle. Instant-toggle checkbox via `useFetcher`, same
   optimistic-flip-while-pending pattern as `ShoppingItemRow.tsx`.
 
-Reached from the sidebar nav like any section, but `HouseholdFooter.tsx`
-also links your own name/avatar row straight to
-`/settings#personal-preferences` as a shortcut — `currentUserId`,
-threaded down from `_layout.tsx`'s loader through
+`HouseholdFooter.tsx` links your own name/avatar row to
+`/settings#personal-preferences`, scrolled straight to the personal card
+— `currentUserId`, threaded down from `_layout.tsx`'s loader through
 `Sidebar`/`MobileNavDrawer`, is what makes only *your* row a link; another
 member's row renders the same avatar+name but isn't one, since nobody
-edits another member's preferences from here.
+edits another member's preferences from here. This is the page's **only**
+entry point (see Sections above) — get there via your own profile row,
+never a nav item.
 
 ## Chore rotation
 

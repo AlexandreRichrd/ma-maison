@@ -20,7 +20,6 @@ export const NAV_ITEMS: NavItem[] = [
     shapeClassName: "rounded-full border-[3px] border-current bg-transparent!",
   },
   { to: "/household", label: "Foyer", shapeClassName: "rounded-[9px]" },
-  { to: "/settings", label: "Paramètres", shapeClassName: "rounded-[3px] rotate-45" },
 ];
 
 /** Longest-prefix match against the current pathname, for the mobile header title. */

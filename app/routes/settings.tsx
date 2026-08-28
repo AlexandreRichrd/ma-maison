@@ -93,7 +93,7 @@ export async function action({ request }: Route.ActionArgs) {
 export default function Settings({ loaderData }: Route.ComponentProps) {
   return (
     <div>
-      <PageHeader title="Paramètres" />
+      <PageHeader title="Paramètres" back={{ to: "/", label: "← Tableau de bord" }} />
       <div className="max-w-[560px]">
         <HouseholdSettingsCard settings={loaderData.settings} users={loaderData.users} />
         <PersonalPreferencesCard user={loaderData.user} />
