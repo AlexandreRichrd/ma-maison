@@ -70,10 +70,12 @@ export async function getRecipes(request: Request): Promise<RecipePreview[]> {
 export async function getRecipeDetail(
   request: Request,
   recipeId: string,
+  servings?: number,
 ): Promise<RecipeDetail | null> {
   const accessToken = await getAccessToken(request);
+  const query = servings ? `?servings=${servings}` : "";
   try {
-    return await apiFetch<RecipeDetail>(`/recipes/${recipeId}`, { accessToken });
+    return await apiFetch<RecipeDetail>(`/recipes/${recipeId}${query}`, { accessToken });
   } catch (error) {
     // A malformed recipeId (arbitrary URL, not just a stale/missing one)
     // fails the API's ParseUUIDPipe with 400 rather than a clean 404 —

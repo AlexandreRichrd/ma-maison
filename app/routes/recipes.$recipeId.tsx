@@ -17,13 +17,25 @@ export function meta({ loaderData }: Route.MetaArgs) {
   ];
 }
 
+function parseServingsParam(raw: string | null): number | undefined {
+  if (raw === null) return undefined;
+  return /^\d+$/.test(raw) && Number(raw) >= 1 ? Number(raw) : NaN;
+}
+
 export async function loader({ request, params }: Route.LoaderArgs) {
-  const detail = await getRecipeDetail(request, params.recipeId);
+  const url = new URL(request.url);
+  const servings = parseServingsParam(url.searchParams.get("servings"));
+  if (Number.isNaN(servings)) {
+    throw redirect(`/recipes/${params.recipeId}`);
+  }
+
+  const detail = await getRecipeDetail(request, params.recipeId, servings);
   if (!detail) {
     throw data("Introuvable", { status: 404 });
   }
   const shoppingLists = await getShoppingLists(request);
-  return { ...detail, shoppingLists };
+  const effectiveServings = servings ?? detail.recipe.servings;
+  return { ...detail, shoppingLists, effectiveServings };
 }
 
 export async function action({ request, params }: Route.ActionArgs) {
@@ -39,6 +51,7 @@ export async function action({ request, params }: Route.ActionArgs) {
       const outcome = await addIngredientsToList(request, {
         recipeId: params.recipeId,
         listId: result.data.listId,
+        servings: result.data.servings,
       });
       const lists = await getShoppingLists(request);
       const listName = lists.find((l) => l.id === result.data.listId)?.name ?? "la liste";
@@ -55,6 +68,7 @@ export async function action({ request, params }: Route.ActionArgs) {
       const outcome = await addIngredientsToList(request, {
         recipeId: params.recipeId,
         newListName: detail.recipe.name,
+        servings: result.data.servings,
       });
       return redirect(`/shopping/${outcome.listId}`);
     }
@@ -78,7 +92,7 @@ export async function action({ request, params }: Route.ActionArgs) {
 }
 
 export default function RecipeDetail({ loaderData }: Route.ComponentProps) {
-  const { recipe, ingredients, steps, shoppingLists } = loaderData;
+  const { recipe, ingredients, steps, shoppingLists, effectiveServings } = loaderData;
   const existingFetcher = useFetcher<typeof action>();
   const newListFetcher = useFetcher<typeof action>();
   const deleteFetcher = useFetcher();
@@ -102,7 +116,6 @@ export default function RecipeDetail({ loaderData }: Route.ComponentProps) {
       <PageHeader
         back={{ to: "/recipes", label: "← Toutes les recettes" }}
         title={recipe.name}
-        subtitle={`${recipe.servings} portions`}
         action={
           <div className="flex gap-2.5">
             <Link
@@ -117,6 +130,36 @@ export default function RecipeDetail({ loaderData }: Route.ComponentProps) {
           </div>
         }
       />
+
+      <div className="mb-4 flex items-center gap-3">
+        <span className="text-sm font-semibold text-muted">Portions</span>
+        <div className="flex items-center gap-1.5">
+          {effectiveServings > 1 ? (
+            <Link
+              to={`?servings=${effectiveServings - 1}`}
+              aria-label="Réduire le nombre de portions"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-card text-lg font-semibold transition-colors hover:bg-surface"
+            >
+              −
+            </Link>
+          ) : (
+            <span
+              aria-hidden
+              className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-card text-lg font-semibold opacity-40"
+            >
+              −
+            </span>
+          )}
+          <span className="w-8 text-center text-base font-semibold">{effectiveServings}</span>
+          <Link
+            to={`?servings=${effectiveServings + 1}`}
+            aria-label="Augmenter le nombre de portions"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-card text-lg font-semibold transition-colors hover:bg-surface"
+          >
+            +
+          </Link>
+        </div>
+      </div>
 
       <div className={`${cardClassName} mb-6 max-w-[520px] overflow-hidden p-0`}>
         {ingredients.map((ingredient) => (
@@ -158,6 +201,7 @@ export default function RecipeDetail({ loaderData }: Route.ComponentProps) {
         <div className="flex flex-wrap gap-2.5">
           <existingFetcher.Form method="post" className="contents">
             <input type="hidden" name="intent" value="addToExistingList" />
+            <input type="hidden" name="servings" value={effectiveServings} />
             {shoppingLists.map((list) => (
               <Button
                 key={list.id}
@@ -173,6 +217,7 @@ export default function RecipeDetail({ loaderData }: Route.ComponentProps) {
           </existingFetcher.Form>
           <newListFetcher.Form method="post" className="contents">
             <input type="hidden" name="intent" value="addAsNewList" />
+            <input type="hidden" name="servings" value={effectiveServings} />
             <Button type="submit" disabled={newListFetcher.state !== "idle"}>
               + Nouvelle liste
             </Button>

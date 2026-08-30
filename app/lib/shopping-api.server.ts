@@ -90,7 +90,7 @@ export type AddIngredientsResult = {
 
 export async function addIngredientsToList(
   request: Request,
-  params: { recipeId: string; listId?: string; newListName?: string },
+  params: { recipeId: string; listId?: string; newListName?: string; servings?: number },
 ): Promise<AddIngredientsResult> {
   const accessToken = await getAccessToken(request);
   return apiFetch<AddIngredientsResult>("/shopping-lists/add-ingredients", {
@@ -100,6 +100,7 @@ export async function addIngredientsToList(
       recipeId: params.recipeId,
       listId: params.listId,
       newListName: params.newListName,
+      servings: params.servings,
     },
   });
 }
