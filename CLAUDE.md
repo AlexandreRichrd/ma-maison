@@ -128,6 +128,19 @@ transaction. This app just calls it and shows the result — see the
 Recipes section confirmation-copy note under UI conventions; the merge logic
 itself is not this repo's concern.
 
+- **Servings scaling (issue #16)** — a `−`/`+` stepper on the detail page,
+  driven by a `?servings=` URL param on `/recipes/:recipeId` (the loader
+  validates and canonicalizes it, same `?week=`/`?view=` pattern as
+  Cleaning/Reminders below). All the scaling math — the rounding rule for
+  countable vs. continuous units, the decision not to add a per-ingredient
+  "don't scale" flag — lives entirely in `my-home-backend` (see its
+  CLAUDE.md's Servings scaling section); this app only ever displays
+  whatever pre-scaled `quantity` the API returns for the requested
+  `servings`, never recomputes it. The two "add to list" forms send the
+  currently displayed `servings` alongside the request, so a scaled recipe
+  sends scaled quantities to the shopping list, not the recipe's stored
+  ones — the API does that scaling too, from the same shared function, so
+  the display and what lands on the list can never diverge.
 - **Create/edit** (`/recipes/new`, `/recipes/:recipeId/edit`) — a dedicated
   page, not the usual `<Modal>`: `RecipeForm`
   (`components/recipes/RecipeForm.tsx`) holds the ingredient and step lists
@@ -639,7 +652,6 @@ Do not build these unless explicitly asked:
   reminder assignees for more than two people — invites can technically
   create a third+ user today, but nothing downstream of that has been
   redesigned to handle it (see Chore rotation, Project intro)
-- Servings scaling of ingredient quantities
 - Store tags on shopping items
 - Push or in-app notifications (transactional invite/activation/password-reset
   email is the only mail the app sends)

@@ -64,10 +64,12 @@ export const toggleItemSchema = z.object({
 export const addToExistingListSchema = z.object({
   intent: z.literal("addToExistingList"),
   listId: z.uuid(),
+  servings: z.coerce.number().int().min(1),
 });
 
 export const addAsNewListSchema = z.object({
   intent: z.literal("addAsNewList"),
+  servings: z.coerce.number().int().min(1),
 });
 
 const recipeIngredientSchema = z.object({
