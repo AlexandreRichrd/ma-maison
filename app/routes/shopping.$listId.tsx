@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { data, useFetcher } from "react-router";
+import { data, redirect, useFetcher } from "react-router";
 
 import { PageHeader } from "~/components/layout/PageHeader";
 import { ShoppingItemRow } from "~/components/shopping/ShoppingItemRow";
@@ -7,11 +7,12 @@ import { Button, cardClassName, Input, Modal, Select } from "~/components/ui";
 import { ApiRequestError, mapApiErrors } from "~/lib/api.server";
 import {
   addShoppingItem,
+  deleteShoppingList,
   getShoppingListDetail,
   toggleShoppingItem,
 } from "~/lib/shopping-api.server";
 import { UNIT_OPTIONS } from "~/lib/units";
-import { addItemSchema } from "~/lib/validation";
+import { addItemSchema, deleteShoppingListSchema } from "~/lib/validation";
 
 import type { Route } from "./+types/shopping.$listId";
 
@@ -53,6 +54,15 @@ export async function action({ request, params }: Route.ActionArgs) {
       });
       return { ok: true };
     }
+
+    if (intent === "deleteList") {
+      const result = deleteShoppingListSchema.safeParse(Object.fromEntries(formData));
+      if (!result.success) {
+        return data({ errors: result.error.flatten().fieldErrors }, { status: 400 });
+      }
+      await deleteShoppingList(request, result.data.listId);
+      return redirect("/shopping");
+    }
   } catch (error) {
     if (error instanceof ApiRequestError) {
       return data({ errors: mapApiErrors(error.errors) }, { status: error.status });
@@ -66,7 +76,9 @@ export async function action({ request, params }: Route.ActionArgs) {
 export default function ShoppingListDetail({ loaderData }: Route.ComponentProps) {
   const { list, items } = loaderData;
   const [modalOpen, setModalOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const fetcher = useFetcher<typeof action>();
+  const deleteFetcher = useFetcher();
   const errors = fetcher.data && "errors" in fetcher.data ? fetcher.data.errors : undefined;
   const nameErrors = errors && "name" in errors ? errors.name : undefined;
   const quantityErrors = errors && "quantity" in errors ? errors.quantity : undefined;
@@ -76,7 +88,14 @@ export default function ShoppingListDetail({ loaderData }: Route.ComponentProps)
       <PageHeader
         back={{ to: "/shopping", label: "← Toutes les listes" }}
         title={list.name}
-        action={<Button onClick={() => setModalOpen(true)}>+ Ajouter un article</Button>}
+        action={
+          <div className="flex gap-2.5">
+            <Button onClick={() => setModalOpen(true)}>+ Ajouter un article</Button>
+            <Button variant="secondary" onClick={() => setDeleting(true)}>
+              Supprimer
+            </Button>
+          </div>
+        }
       />
       <div className={`${cardClassName} overflow-hidden p-0`}>
         {items.length === 0 ? (
@@ -113,6 +132,20 @@ export default function ShoppingListDetail({ loaderData }: Route.ComponentProps)
             </option>
           ))}
         </Select>
+      </Modal>
+
+      <Modal
+        open={deleting}
+        title={`Supprimer « ${list.name} » ?`}
+        onClose={() => setDeleting(false)}
+        fetcher={deleteFetcher}
+        submitLabel="Supprimer"
+      >
+        <input type="hidden" name="intent" value="deleteList" />
+        <input type="hidden" name="listId" value={list.id} />
+        <p className="text-sm font-medium text-muted">
+          Ses articles seront supprimés avec elle. Cette action est irréversible.
+        </p>
       </Modal>
     </div>
   );
