@@ -114,6 +114,26 @@ metric, and this app already has no charting dependency to reuse.
 Checking an item is a `useFetcher` mutation with optimistic UI — it must not
 navigate or scroll the list.
 
+- **Delete (issue #17)** — a confirmation `<Modal>` (same pattern as
+  `ChoresSection.tsx`'s delete modal, also reused for recipe deletion), on
+  **both** the overview and the detail page:
+  - **Detail page** — a `Supprimer` button next to `+ Ajouter un article` in
+    the `<PageHeader>` action slot; redirects to `/shopping` on success, same
+    as recipe deletion redirecting to `/recipes`.
+  - **Overview** — a `Supprimer` button on each `ShoppingListCard`, outside
+    the card's own `<Link>` (the card is no longer one big link — the name/
+    count block and the delete button are now siblings so the button doesn't
+    nest inside an anchor). Deletion is a `useFetcher` mutation against the
+    list already on that page and does not navigate — same non-navigating
+    pattern as checking a shopping item. The confirming list is lifted into
+    page-level state (`deletingList`), one shared `<Modal>` and fetcher for
+    every card — same structure as `ChoresSection.tsx`'s single delete modal
+    serving a whole list of rows, rather than one modal instance per card.
+  - Hard delete, not archive — see `my-home-backend/CLAUDE.md`'s Database
+    section for why. No separate copy for a list with unchecked items vs. a
+    fully-checked one; one plain confirmation either way, matching recipe/
+    chore deletion.
+
 ### Recipes
 - **Overview** — name, servings, ingredient count
 - **Detail** — ingredient list, and two ways to push ingredients out:
