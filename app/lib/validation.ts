@@ -61,6 +61,11 @@ export const toggleItemSchema = z.object({
   itemId: z.uuid(),
 });
 
+export const deleteShoppingListSchema = z.object({
+  intent: z.literal("deleteList"),
+  listId: z.uuid(),
+});
+
 export const addToExistingListSchema = z.object({
   intent: z.literal("addToExistingList"),
   listId: z.uuid(),

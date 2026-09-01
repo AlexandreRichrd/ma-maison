@@ -74,6 +74,14 @@ export async function addShoppingItem(
   });
 }
 
+export async function deleteShoppingList(request: Request, listId: string): Promise<void> {
+  const accessToken = await getAccessToken(request);
+  await apiFetch(`/shopping-lists/${listId}`, {
+    method: "DELETE",
+    accessToken,
+  });
+}
+
 export async function toggleShoppingItem(request: Request, itemId: string): Promise<void> {
   const accessToken = await getAccessToken(request);
   await apiFetch(`/shopping-items/${itemId}/toggle`, {
